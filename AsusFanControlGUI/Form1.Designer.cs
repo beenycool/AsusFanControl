@@ -46,7 +46,12 @@
             this.toolStripMenuItemMinimizeToTrayOnClose = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItemAutoRefreshStats = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItemCheckForUpdates = new System.Windows.Forms.ToolStripMenuItem();
+            this.checkBoxAuto = new System.Windows.Forms.CheckBox();
+            this.buttonEditCurve = new System.Windows.Forms.Button();
+            this.numericUpdateInterval = new System.Windows.Forms.NumericUpDown();
+            this.labelInterval = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.trackBarFanSpeed)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpdateInterval)).BeginInit();
             this.menuStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -146,6 +151,59 @@
             this.label4.TabIndex = 7;
             this.label4.Text = "Current CPU temp:";
             // 
+            // checkBoxAuto
+            //
+            this.checkBoxAuto.AutoSize = true;
+            this.checkBoxAuto.Location = new System.Drawing.Point(140, 37);
+            this.checkBoxAuto.Name = "checkBoxAuto";
+            this.checkBoxAuto.Size = new System.Drawing.Size(80, 17);
+            this.checkBoxAuto.TabIndex = 11;
+            this.checkBoxAuto.Text = "Auto";
+            this.checkBoxAuto.UseVisualStyleBackColor = true;
+            this.checkBoxAuto.CheckedChanged += new System.EventHandler(this.checkBoxAuto_CheckedChanged);
+            //
+            // buttonEditCurve
+            //
+            this.buttonEditCurve.Location = new System.Drawing.Point(230, 33);
+            this.buttonEditCurve.Name = "buttonEditCurve";
+            this.buttonEditCurve.Size = new System.Drawing.Size(75, 23);
+            this.buttonEditCurve.TabIndex = 12;
+            this.buttonEditCurve.Text = "Edit Curve";
+            this.buttonEditCurve.UseVisualStyleBackColor = true;
+            this.buttonEditCurve.Click += new System.EventHandler(this.buttonEditCurve_Click);
+            //
+            // numericUpdateInterval
+            //
+            this.numericUpdateInterval.Location = new System.Drawing.Point(250, 165);
+            this.numericUpdateInterval.Maximum = new decimal(new int[] {
+            60000,
+            0,
+            0,
+            0});
+            this.numericUpdateInterval.Minimum = new decimal(new int[] {
+            500,
+            0,
+            0,
+            0});
+            this.numericUpdateInterval.Name = "numericUpdateInterval";
+            this.numericUpdateInterval.Size = new System.Drawing.Size(60, 20);
+            this.numericUpdateInterval.TabIndex = 13;
+            this.numericUpdateInterval.Value = new decimal(new int[] {
+            2000,
+            0,
+            0,
+            0});
+            this.numericUpdateInterval.ValueChanged += new System.EventHandler(this.numericUpdateInterval_ValueChanged);
+            //
+            // labelInterval
+            //
+            this.labelInterval.AutoSize = true;
+            this.labelInterval.Location = new System.Drawing.Point(180, 168);
+            this.labelInterval.Name = "labelInterval";
+            this.labelInterval.Size = new System.Drawing.Size(67, 13);
+            this.labelInterval.TabIndex = 14;
+            this.labelInterval.Text = "Interval (ms):";
+            //
             // menuStrip1
             // 
             this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
@@ -212,6 +270,10 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(324, 198);
+            this.Controls.Add(this.labelInterval);
+            this.Controls.Add(this.numericUpdateInterval);
+            this.Controls.Add(this.buttonEditCurve);
+            this.Controls.Add(this.checkBoxAuto);
             this.Controls.Add(this.labelCPUTemp);
             this.Controls.Add(this.buttonRefreshCPUTemp);
             this.Controls.Add(this.label4);
@@ -230,6 +292,7 @@
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.Form1_FormClosing);
             this.Load += new System.EventHandler(this.Form1_Load);
             ((System.ComponentModel.ISupportInitialize)(this.trackBarFanSpeed)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.numericUpdateInterval)).EndInit();
             this.menuStrip1.ResumeLayout(false);
             this.menuStrip1.PerformLayout();
             this.ResumeLayout(false);
@@ -256,6 +319,10 @@
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemCheckForUpdates;
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemMinimizeToTrayOnClose;
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemAutoRefreshStats;
+        private System.Windows.Forms.CheckBox checkBoxAuto;
+        private System.Windows.Forms.Button buttonEditCurve;
+        private System.Windows.Forms.NumericUpDown numericUpdateInterval;
+        private System.Windows.Forms.Label labelInterval;
     }
 }
 

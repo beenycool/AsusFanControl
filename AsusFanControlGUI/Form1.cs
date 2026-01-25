@@ -10,6 +10,7 @@ namespace AsusFanControlGUI
         int fanSpeed = 0;
         Timer timer;
         NotifyIcon trayIcon;
+        FanCurve currentFanCurve;
 
         public Form1()
         {
@@ -21,6 +22,39 @@ namespace AsusFanControlGUI
             toolStripMenuItemMinimizeToTrayOnClose.Checked = Properties.Settings.Default.minimizeToTrayOnClose;
             toolStripMenuItemAutoRefreshStats.Checked = Properties.Settings.Default.autoRefreshStats;
             trackBarFanSpeed.Value = Properties.Settings.Default.fanSpeed;
+
+            checkBoxAuto.Checked = Properties.Settings.Default.autoMode;
+            numericUpdateInterval.Value = Properties.Settings.Default.updateInterval;
+            currentFanCurve = FanCurve.FromString(Properties.Settings.Default.fanCurve);
+
+            if (currentFanCurve.Points.Count == 0)
+            {
+                 // Default curve
+                 currentFanCurve.Points.Add(new FanCurvePoint(30, 0));
+                 currentFanCurve.Points.Add(new FanCurvePoint(60, 50));
+                 currentFanCurve.Points.Add(new FanCurvePoint(90, 100));
+            }
+
+            updateUIState();
+        }
+
+        private void updateUIState()
+        {
+            bool auto = checkBoxAuto.Checked;
+
+            if (auto)
+            {
+                checkBoxTurnOn.Checked = false;
+                checkBoxTurnOn.Enabled = false;
+                trackBarFanSpeed.Enabled = false;
+            }
+            else
+            {
+                checkBoxTurnOn.Enabled = true;
+                trackBarFanSpeed.Enabled = true;
+            }
+
+            timerRefreshStats();
         }
 
         private void OnProcessExit(object sender, EventArgs e)
@@ -31,6 +65,7 @@ namespace AsusFanControlGUI
 
         private void Form1_Load(object sender, EventArgs e)
         {
+            // Timer already started in updateUIState called from ctor, but calling it here is safe too
             timerRefreshStats();
         }
 
@@ -82,11 +117,14 @@ namespace AsusFanControlGUI
                 timer = null;
             }
 
-            if (!Properties.Settings.Default.autoRefreshStats)
+            bool auto = checkBoxAuto.Checked;
+            bool refresh = Properties.Settings.Default.autoRefreshStats;
+
+            if (!auto && !refresh)
                 return;
 
             timer = new Timer();
-            timer.Interval = 2000;
+            timer.Interval = (int)numericUpdateInterval.Value;
             timer.Tick += new EventHandler(TimerEventProcessor);
             timer.Start();
         }
@@ -95,6 +133,22 @@ namespace AsusFanControlGUI
         {
             buttonRefreshRPM_Click(sender, e);
             buttonRefreshCPUTemp_Click(sender, e);
+
+            if (checkBoxAuto.Checked)
+            {
+                ulong tempU = asusControl.Thermal_Read_Cpu_Temperature();
+                int temp = (int)tempU;
+                int targetSpeed = currentFanCurve.GetTargetSpeed(temp);
+
+                labelValue.Text = targetSpeed.ToString() + " (Auto)";
+
+                // Hysteresis to prevent rapid oscillation
+                if (targetSpeed > fanSpeed || Math.Abs(targetSpeed - fanSpeed) > 2)
+                {
+                    fanSpeed = targetSpeed;
+                    asusControl.SetFanSpeeds(targetSpeed);
+                }
+            }
         }
 
         private void toolStripMenuItemTurnOffControlOnExit_CheckedChanged(object sender, EventArgs e)
@@ -130,6 +184,9 @@ namespace AsusFanControlGUI
 
         private void setFanSpeed()
         {
+            if (checkBoxAuto.Checked)
+                return;
+
             var value = trackBarFanSpeed.Value;
             Properties.Settings.Default.fanSpeed = value;
             Properties.Settings.Default.Save();
@@ -186,5 +243,29 @@ namespace AsusFanControlGUI
             labelCPUTemp.Text = $"{asusControl.Thermal_Read_Cpu_Temperature()}";
         }
 
+        private void checkBoxAuto_CheckedChanged(object sender, EventArgs e)
+        {
+            Properties.Settings.Default.autoMode = checkBoxAuto.Checked;
+            Properties.Settings.Default.Save();
+            updateUIState();
+        }
+
+        private void buttonEditCurve_Click(object sender, EventArgs e)
+        {
+            var editor = new FanCurveEditor(currentFanCurve);
+            if (editor.ShowDialog() == DialogResult.OK)
+            {
+                currentFanCurve = editor.ResultCurve;
+                Properties.Settings.Default.fanCurve = currentFanCurve.ToString();
+                Properties.Settings.Default.Save();
+            }
+        }
+
+        private void numericUpdateInterval_ValueChanged(object sender, EventArgs e)
+        {
+            Properties.Settings.Default.updateInterval = (int)numericUpdateInterval.Value;
+            Properties.Settings.Default.Save();
+            timerRefreshStats();
+        }
     }
 }
