@@ -70,6 +70,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="FanCurve.cs" />
+    <Compile Include="FanCurveControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="FanCurveEditor.cs">
       <SubType>Form</SubType>
     </Compile>
