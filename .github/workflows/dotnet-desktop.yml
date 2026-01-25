@@ -45,7 +45,7 @@ jobs:
 
     # Build the application
     - name: Build the application
-      run: msbuild $env:Solution_Name /p:Configuration=$env:Configuration /p:Platform=$env:platform
+      run: msbuild $env:Solution_Name /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }}
 
     # Upload the build artifact
     - name: Upload build artifacts
