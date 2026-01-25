@@ -82,5 +82,41 @@ namespace AsusFanControlGUI.Properties {
                 this["autoRefreshStats"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool autoMode {
+            get {
+                return ((bool)(this["autoMode"]));
+            }
+            set {
+                this["autoMode"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string fanCurve {
+            get {
+                return ((string)(this["fanCurve"]));
+            }
+            set {
+                this["fanCurve"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("2000")]
+        public int updateInterval {
+            get {
+                return ((int)(this["updateInterval"]));
+            }
+            set {
+                this["updateInterval"] = value;
+            }
+        }
     }
 }
