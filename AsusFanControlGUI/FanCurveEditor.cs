@@ -24,41 +24,15 @@ namespace AsusFanControlGUI
 
         private void FanCurveEditor_Load(object sender, EventArgs e)
         {
-            if (ResultCurve != null && ResultCurve.Points != null)
+            if (ResultCurve != null)
             {
-                foreach (var p in ResultCurve.Points)
-                {
-                    dataGridView1.Rows.Add(p.Temperature, p.Speed);
-                }
+                fanCurveControl1.SetCurve(ResultCurve);
             }
         }
 
         private void buttonOk_Click(object sender, EventArgs e)
         {
-            var newCurve = new FanCurve();
-            foreach (DataGridViewRow row in dataGridView1.Rows)
-            {
-                if (row.IsNewRow) continue;
-
-                if (row.Cells[0].Value != null && row.Cells[1].Value != null)
-                {
-                    if (int.TryParse(row.Cells[0].Value.ToString(), out int temp) &&
-                        int.TryParse(row.Cells[1].Value.ToString(), out int speed))
-                    {
-                        // Clamp values
-                        if (speed < 0) speed = 0;
-                        if (speed > 100) speed = 100;
-                        if (temp < 0) temp = 0; // unlikely but safe
-
-                        newCurve.Points.Add(new FanCurvePoint(temp, speed));
-                    }
-                }
-            }
-
-            // Sort
-            newCurve.Points.Sort((a, b) => a.Temperature.CompareTo(b.Temperature));
-
-            ResultCurve = newCurve;
+            ResultCurve = fanCurveControl1.GetCurve();
             this.DialogResult = DialogResult.OK;
             this.Close();
         }
