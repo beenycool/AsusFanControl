@@ -36,6 +36,15 @@ jobs:
     - name: Setup MSBuild.exe
       uses: microsoft/setup-msbuild@v2
 
+    # Cache NuGet packages
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
     # Restore the application to populate the obj folder with RuntimeIdentifiers
     - name: Restore NuGet packages
       run: nuget restore $env:Solution_Name
@@ -46,6 +55,25 @@ jobs:
     # Build the application
     - name: Build the application
       run: msbuild $env:Solution_Name /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }}
+
+    # Download PsExec and Create Batch Script
+    - name: Prepare Artifacts
+      run: |
+        Invoke-WebRequest -Uri "https://download.sysinternals.com/files/PSTools.zip" -OutFile "PSTools.zip"
+        Expand-Archive -Path "PSTools.zip" -DestinationPath "PSTools"
+        Copy-Item -Path "PSTools/PsExec.exe" -Destination "bin/${{ matrix.platform }}/${{ matrix.configuration }}/"
+
+        $batContent = @"
+        net session >nul 2>&1
+        if %ERRORLEVEL% NEQ 0 (
+            echo Requesting administrative privileges...
+            powershell -Command "Start-Process -FilePath 'cmd.exe' -ArgumentList '/c \"\"%~f0\"\"' -Verb RunAs"
+            exit /b
+        )
+
+        "%~dp0PsExec" -i -s -d "%~dp0AsusFanControlGUI.exe"
+        "@
+        $batContent | Out-File -FilePath "bin/${{ matrix.platform }}/${{ matrix.configuration }}/RunAsAdmin.bat" -Encoding ASCII
 
     # Upload the build artifact
     - name: Upload build artifacts
