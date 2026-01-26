@@ -18,6 +18,8 @@ namespace AsusFanControlGUI
             this.fanCurveControl1 = new AsusFanControlGUI.FanCurveControl();
             this.buttonOk = new System.Windows.Forms.Button();
             this.buttonCancel = new System.Windows.Forms.Button();
+            this.buttonImport = new System.Windows.Forms.Button();
+            this.buttonExport = new System.Windows.Forms.Button();
             this.label1 = new System.Windows.Forms.Label();
             this.SuspendLayout();
             //
@@ -48,6 +50,26 @@ namespace AsusFanControlGUI
             this.buttonCancel.UseVisualStyleBackColor = true;
             this.buttonCancel.Click += new System.EventHandler(this.buttonCancel_Click);
             //
+            // buttonImport
+            //
+            this.buttonImport.Location = new System.Drawing.Point(12, 335);
+            this.buttonImport.Name = "buttonImport";
+            this.buttonImport.Size = new System.Drawing.Size(75, 23);
+            this.buttonImport.TabIndex = 4;
+            this.buttonImport.Text = "Import";
+            this.buttonImport.UseVisualStyleBackColor = true;
+            this.buttonImport.Click += new System.EventHandler(this.buttonImport_Click);
+            //
+            // buttonExport
+            //
+            this.buttonExport.Location = new System.Drawing.Point(93, 335);
+            this.buttonExport.Name = "buttonExport";
+            this.buttonExport.Size = new System.Drawing.Size(75, 23);
+            this.buttonExport.TabIndex = 5;
+            this.buttonExport.Text = "Export";
+            this.buttonExport.UseVisualStyleBackColor = true;
+            this.buttonExport.Click += new System.EventHandler(this.buttonExport_Click);
+            //
             // label1
             //
             this.label1.AutoSize = true;
@@ -63,6 +85,8 @@ namespace AsusFanControlGUI
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(484, 370);
             this.Controls.Add(this.label1);
+            this.Controls.Add(this.buttonExport);
+            this.Controls.Add(this.buttonImport);
             this.Controls.Add(this.buttonCancel);
             this.Controls.Add(this.buttonOk);
             this.Controls.Add(this.fanCurveControl1);
@@ -77,6 +101,8 @@ namespace AsusFanControlGUI
         private AsusFanControlGUI.FanCurveControl fanCurveControl1;
         private System.Windows.Forms.Button buttonOk;
         private System.Windows.Forms.Button buttonCancel;
+        private System.Windows.Forms.Button buttonImport;
+        private System.Windows.Forms.Button buttonExport;
         private System.Windows.Forms.Label label1;
     }
 }
