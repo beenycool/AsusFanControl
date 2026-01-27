@@ -34,8 +34,7 @@ namespace AsusFanControl
             AppDomain.CurrentDomain.ProcessExit += (s, e) =>
             {
                 if (!skipResetOnExit) asusControl.ResetToDefault();
-                // Ensure cleanup happens even if Main's finally block was bypassed (rare but possible)
-                asusControl.Dispose();
+                // Do not dispose here to avoid double-dispose with finally block.
             };
             AppDomain.CurrentDomain.UnhandledException += (s, e) =>
             {
@@ -57,24 +56,50 @@ namespace AsusFanControl
                     if (arg.StartsWith("--set-fan-speeds"))
                     {
                         skipResetOnExit = true; // User wants this speed to stick
-                        var newSpeedStr = arg.Split('=')[1];
-                        var newSpeed = int.Parse(newSpeedStr);
-                        asusControl.SetFanSpeeds(newSpeed);
 
-                        if(newSpeed == 0)
-                            Console.WriteLine("Test mode turned off");
+                        var parts = arg.Split('=');
+                        if (parts.Length < 2 || string.IsNullOrWhiteSpace(parts[1]))
+                        {
+                            Console.WriteLine("Error: Invalid format for --set-fan-speeds. Usage: --set-fan-speeds=50");
+                            continue;
+                        }
+
+                        if (int.TryParse(parts[1], out int newSpeed))
+                        {
+                            asusControl.SetFanSpeeds(newSpeed);
+
+                            if(newSpeed == 0)
+                                Console.WriteLine("Test mode turned off");
+                            else
+                                Console.WriteLine($"New fan speeds: {newSpeed}%");
+                        }
                         else
-                            Console.WriteLine($"New fan speeds: {newSpeed}%");
+                        {
+                            Console.WriteLine($"Error: Invalid number format for speed: {parts[1]}");
+                        }
                     }
 
                     if (arg.StartsWith("--get-fan-speed="))
                     {
-                        var fanIds = arg.Split('=')[1].Split(',');
+                        var parts = arg.Split('=');
+                        if (parts.Length < 2 || string.IsNullOrWhiteSpace(parts[1]))
+                        {
+                             Console.WriteLine("Error: Invalid format. Usage: --get-fan-speed=0,1");
+                             continue;
+                        }
+
+                        var fanIds = parts[1].Split(',');
                         foreach (var fanIdStr in fanIds)
                         {
-                            var fanId = int.Parse(fanIdStr);
-                            var fanSpeed = asusControl.GetFanSpeed((byte)fanId);
-                            Console.WriteLine($"Current fan speed for fan {fanId}: {fanSpeed} RPM");
+                            if (int.TryParse(fanIdStr, out int fanId))
+                            {
+                                var fanSpeed = asusControl.GetFanSpeed((byte)fanId);
+                                Console.WriteLine($"Current fan speed for fan {fanId}: {fanSpeed} RPM");
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Error: Invalid fan ID: {fanIdStr}");
+                            }
                         }
                     }
 
@@ -87,18 +112,34 @@ namespace AsusFanControl
                     if (arg.StartsWith("--set-fan-speed="))
                     {
                         skipResetOnExit = true; // User wants this speed to stick
-                        var fanSettings = arg.Split('=')[1].Split(',');
-                        foreach (var fanSetting in fanSettings)
-                    {
-                        var fanId = int.Parse(fanSetting.Split(':')[0]);
-                        var fanSpeed = int.Parse(fanSetting.Split(':')[1]);
-                        asusControl.SetFanSpeed(fanSpeed, (byte)fanId);
 
-                        if (fanSpeed == 0)
-                            Console.WriteLine($"Test mode turned off for fan {fanId}");
-                        else
-                            Console.WriteLine($"New fan speed for fan {fanId}: {fanSpeed}%");
-                    }
+                        var parts = arg.Split('=');
+                        if (parts.Length < 2 || string.IsNullOrWhiteSpace(parts[1]))
+                        {
+                             Console.WriteLine("Error: Invalid format. Usage: --set-fan-speed=0:50,1:100");
+                             continue;
+                        }
+
+                        var fanSettings = parts[1].Split(',');
+                        foreach (var fanSetting in fanSettings)
+                        {
+                            var settingParts = fanSetting.Split(':');
+                            if (settingParts.Length == 2 &&
+                                int.TryParse(settingParts[0], out int fanId) &&
+                                int.TryParse(settingParts[1], out int fanSpeed))
+                            {
+                                asusControl.SetFanSpeed(fanSpeed, (byte)fanId);
+
+                                if (fanSpeed == 0)
+                                    Console.WriteLine($"Test mode turned off for fan {fanId}");
+                                else
+                                    Console.WriteLine($"New fan speed for fan {fanId}: {fanSpeed}%");
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Error: Invalid fan setting format: {fanSetting}");
+                            }
+                        }
                     }
 
                     if (arg.StartsWith("--get-cpu-temp"))

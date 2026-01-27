@@ -93,8 +93,8 @@ namespace AsusFanControlGUI
                 // asusControl handles disposal checks internally
                 asusControl.ResetToDefault();
             }
-            // Ensure disposed
-            asusControl.Dispose();
+            // Do not dispose here to avoid race with Form.Dispose(bool) or double-dispose.
+            // asusControl.Dispose() will be called when the Form is disposed.
         }
 
         private void Form1_Load(object sender, EventArgs e)
