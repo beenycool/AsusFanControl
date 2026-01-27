@@ -4,12 +4,14 @@ using System.Threading.Tasks;
 
 namespace AsusFanControl.Core
 {
-    public class AsusControl : IFanController
+    public class AsusControl : IFanController, IDisposable
     {
         private const char FanModeManual = (char)0x01;
         private const char FanModeDefault = (char)0x00;
         private const int MinFanSpeed = 0;
         private const int MaxFanSpeed = 100;
+        private const int ResetCommandDelayMs = 10;
+        private bool _disposed = false;
 
         public AsusControl()
         {
@@ -18,7 +20,23 @@ namespace AsusFanControl.Core
 
         ~AsusControl()
         {
-            AsusWinIO64.ShutdownWinIo();
+            Dispose(false);
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                // Unmanaged resources
+                AsusWinIO64.ShutdownWinIo();
+                _disposed = true;
+            }
         }
 
         private void SetFanSpeed(byte value, byte fanIndex = 0)
@@ -28,11 +46,16 @@ namespace AsusFanControl.Core
             AsusWinIO64.HealthyTable_SetFanPwmDuty(value);
         }
 
+        private int ClampPercentage(int percent)
+        {
+            if (percent < MinFanSpeed) return MinFanSpeed;
+            if (percent > MaxFanSpeed) return MaxFanSpeed;
+            return percent;
+        }
+
         public void SetFanSpeed(int percent, byte fanIndex = 0)
         {
-            if (percent < MinFanSpeed) percent = MinFanSpeed;
-            if (percent > MaxFanSpeed) percent = MaxFanSpeed;
-
+            percent = ClampPercentage(percent);
             var value = (byte)(percent / 100.0f * 255);
             SetFanSpeed(value, fanIndex);
         }
@@ -49,9 +72,7 @@ namespace AsusFanControl.Core
 
         public void SetFanSpeeds(int percent)
         {
-            if (percent < MinFanSpeed) percent = MinFanSpeed;
-            if (percent > MaxFanSpeed) percent = MaxFanSpeed;
-
+            percent = ClampPercentage(percent);
             var value = (byte)(percent / 100.0f * 255);
             _ = SetFanSpeeds(value);
         }
@@ -96,7 +117,7 @@ namespace AsusFanControl.Core
                 SetFanSpeed(0, fanIndex);
                 // Minimal blocking delay to ensure hardware processes the command if needed,
                 // but keep it fast for shutdown.
-                System.Threading.Thread.Sleep(10);
+                System.Threading.Thread.Sleep(ResetCommandDelayMs);
             }
         }
     }

@@ -5,6 +5,9 @@ namespace AsusFanControl
 {
     internal static class Program
     {
+        // Shared flag to control watchdog behavior
+        static bool skipResetOnExit = false;
+
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
@@ -27,8 +30,15 @@ namespace AsusFanControl
             IFanController asusControl = new AsusControl();
 
             // Watchdog: Ensure fans are reset to default on exit or crash
-            AppDomain.CurrentDomain.ProcessExit += (s, e) => asusControl.ResetToDefault();
-            AppDomain.CurrentDomain.UnhandledException += (s, e) => asusControl.ResetToDefault();
+            // UNLESS the user explicitly requested to set the fan speed and exit.
+            AppDomain.CurrentDomain.ProcessExit += (s, e) =>
+            {
+                if (!skipResetOnExit) asusControl.ResetToDefault();
+            };
+            AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+            {
+                if (!skipResetOnExit) asusControl.ResetToDefault();
+            };
 
             foreach (var arg in args)
             {
@@ -40,6 +50,7 @@ namespace AsusFanControl
 
                 if (arg.StartsWith("--set-fan-speeds"))
                 {
+                    skipResetOnExit = true; // User wants this speed to stick
                     var newSpeedStr = arg.Split('=')[1];
                     var newSpeed = int.Parse(newSpeedStr);
                     asusControl.SetFanSpeeds(newSpeed);
@@ -69,6 +80,7 @@ namespace AsusFanControl
 
                 if (arg.StartsWith("--set-fan-speed="))
                 {
+                    skipResetOnExit = true; // User wants this speed to stick
                     var fanSettings = arg.Split('=')[1].Split(',');
                     foreach (var fanSetting in fanSettings)
                     {

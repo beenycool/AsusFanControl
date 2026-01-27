@@ -18,6 +18,7 @@ namespace AsusFanControlGUI
             AppDomain.CurrentDomain.ProcessExit += new EventHandler(OnProcessExit);
             // Watchdog for crash
             AppDomain.CurrentDomain.UnhandledException += (s, e) => { try { asusControl.ResetToDefault(); } catch { } };
+            Application.ThreadException += (s, e) => { try { asusControl.ResetToDefault(); } catch { } };
 
             toolStripMenuItemTurnOffControlOnExit.Checked = Properties.Settings.Default.turnOffControlOnExit;
             toolStripMenuItemForbidUnsafeSettings.Checked = Properties.Settings.Default.forbidUnsafeSettings;
