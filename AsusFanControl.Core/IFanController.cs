@@ -1,8 +1,9 @@
+using System;
 using System.Collections.Generic;
 
 namespace AsusFanControl.Core
 {
-    public interface IFanController
+    public interface IFanController : IDisposable
     {
         void SetFanSpeed(int percent, byte fanIndex = 0);
         void SetFanSpeeds(int percent);

@@ -41,6 +41,7 @@ namespace AsusFanControl.Core
 
         private void SetFanSpeed(byte value, byte fanIndex = 0)
         {
+            if (_disposed) return;
             AsusWinIO64.HealthyTable_SetFanIndex(fanIndex);
             AsusWinIO64.HealthyTable_SetFanTestMode(value > 0 ? FanModeManual : FanModeDefault);
             AsusWinIO64.HealthyTable_SetFanPwmDuty(value);
@@ -55,6 +56,7 @@ namespace AsusFanControl.Core
 
         public void SetFanSpeed(int percent, byte fanIndex = 0)
         {
+            if (_disposed) return;
             percent = ClampPercentage(percent);
             var value = (byte)(percent / 100.0f * 255);
             SetFanSpeed(value, fanIndex);
@@ -62,6 +64,7 @@ namespace AsusFanControl.Core
 
         private async Task SetFanSpeeds(byte value)
         {
+            if (_disposed) return;
             var fanCount = AsusWinIO64.HealthyTable_FanCounts();
             for(byte fanIndex = 0; fanIndex < fanCount; fanIndex++)
             {
@@ -72,6 +75,7 @@ namespace AsusFanControl.Core
 
         public void SetFanSpeeds(int percent)
         {
+            if (_disposed) return;
             percent = ClampPercentage(percent);
             var value = (byte)(percent / 100.0f * 255);
             _ = SetFanSpeeds(value);
@@ -79,6 +83,7 @@ namespace AsusFanControl.Core
 
         public int GetFanSpeed(byte fanIndex = 0)
         {
+            if (_disposed) return 0;
             AsusWinIO64.HealthyTable_SetFanIndex(fanIndex);
             var fanSpeed = AsusWinIO64.HealthyTable_FanRPM();
             return fanSpeed;
@@ -86,6 +91,8 @@ namespace AsusFanControl.Core
 
         public List<int> GetFanSpeeds()
         {
+            if (_disposed) return new List<int>();
+
             var fanSpeeds = new List<int>();
 
             var fanCount = AsusWinIO64.HealthyTable_FanCounts();
@@ -100,16 +107,19 @@ namespace AsusFanControl.Core
 
         public int HealthyTable_FanCounts()
         {
+            if (_disposed) return 0;
             return AsusWinIO64.HealthyTable_FanCounts();
         }
 
         public ulong Thermal_Read_Cpu_Temperature()
         {
+            if (_disposed) return 0;
             return AsusWinIO64.Thermal_Read_Cpu_Temperature();
         }
 
         public void ResetToDefault()
         {
+            if (_disposed) return;
             // Synchronous reset for safety (e.g. ProcessExit)
             var fanCount = AsusWinIO64.HealthyTable_FanCounts();
             for(byte fanIndex = 0; fanIndex < fanCount; fanIndex++)

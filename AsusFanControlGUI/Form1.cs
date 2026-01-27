@@ -41,6 +41,32 @@ namespace AsusFanControlGUI
             updateUIState();
         }
 
+        /// <summary>
+        /// Clean up any resources being used.
+        /// </summary>
+        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                if (components != null)
+                {
+                    components.Dispose();
+                }
+
+                // Custom cleanup
+                if (asusControl != null)
+                {
+                    // Ensure fans are reset if configured to do so
+                    if (Properties.Settings.Default.turnOffControlOnExit)
+                        asusControl.ResetToDefault();
+
+                    asusControl.Dispose();
+                }
+            }
+            base.Dispose(disposing);
+        }
+
         private void updateUIState()
         {
             bool auto = checkBoxAuto.Checked;
@@ -63,7 +89,12 @@ namespace AsusFanControlGUI
         private void OnProcessExit(object sender, EventArgs e)
         {
             if (Properties.Settings.Default.turnOffControlOnExit)
+            {
+                // asusControl handles disposal checks internally
                 asusControl.ResetToDefault();
+            }
+            // Ensure disposed
+            asusControl.Dispose();
         }
 
         private void Form1_Load(object sender, EventArgs e)
