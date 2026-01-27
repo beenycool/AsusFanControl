@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using AsusFanControl.Core;
 
 namespace AsusFanControl
 {
@@ -22,7 +23,12 @@ namespace AsusFanControl
                 return 1;
             }
 
-            var asusControl = new AsusControl();
+            // Using Interface type if possible, but strict dependency is fine too.
+            IFanController asusControl = new AsusControl();
+
+            // Watchdog: Ensure fans are reset to default on exit or crash
+            AppDomain.CurrentDomain.ProcessExit += (s, e) => asusControl.ResetToDefault();
+            AppDomain.CurrentDomain.UnhandledException += (s, e) => asusControl.ResetToDefault();
 
             foreach (var arg in args)
             {

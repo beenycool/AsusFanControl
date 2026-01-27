@@ -1,6 +1,6 @@
-﻿using System.Runtime.InteropServices;
+using System.Runtime.InteropServices;
 
-namespace AsusSystemAnalysis
+namespace AsusFanControl.Core
 {
     public class AsusWinIO64
     {

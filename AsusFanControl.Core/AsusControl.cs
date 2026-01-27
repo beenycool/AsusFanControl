@@ -1,14 +1,16 @@
-﻿using AsusSystemAnalysis;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
-namespace AsusFanControl
+namespace AsusFanControl.Core
 {
-    public class AsusControl
+    public class AsusControl : IFanController
     {
+        private const char FanModeManual = (char)0x01;
+        private const char FanModeDefault = (char)0x00;
+        private const int MinFanSpeed = 0;
+        private const int MaxFanSpeed = 100;
+
         public AsusControl()
         {
             AsusWinIO64.InitializeWinIo();
@@ -19,20 +21,23 @@ namespace AsusFanControl
             AsusWinIO64.ShutdownWinIo();
         }
 
-        public void SetFanSpeed(byte value, byte fanIndex = 0)
+        private void SetFanSpeed(byte value, byte fanIndex = 0)
         {
             AsusWinIO64.HealthyTable_SetFanIndex(fanIndex);
-            AsusWinIO64.HealthyTable_SetFanTestMode((char)(value > 0 ? 0x01 : 0x00));
+            AsusWinIO64.HealthyTable_SetFanTestMode(value > 0 ? FanModeManual : FanModeDefault);
             AsusWinIO64.HealthyTable_SetFanPwmDuty(value);
         }
 
         public void SetFanSpeed(int percent, byte fanIndex = 0)
         {
+            if (percent < MinFanSpeed) percent = MinFanSpeed;
+            if (percent > MaxFanSpeed) percent = MaxFanSpeed;
+
             var value = (byte)(percent / 100.0f * 255);
             SetFanSpeed(value, fanIndex);
         }
 
-        public async void SetFanSpeeds(byte value)
+        private async Task SetFanSpeeds(byte value)
         {
             var fanCount = AsusWinIO64.HealthyTable_FanCounts();
             for(byte fanIndex = 0; fanIndex < fanCount; fanIndex++)
@@ -44,8 +49,11 @@ namespace AsusFanControl
 
         public void SetFanSpeeds(int percent)
         {
+            if (percent < MinFanSpeed) percent = MinFanSpeed;
+            if (percent > MaxFanSpeed) percent = MaxFanSpeed;
+
             var value = (byte)(percent / 100.0f * 255);
-            SetFanSpeeds(value);
+            _ = SetFanSpeeds(value);
         }
 
         public int GetFanSpeed(byte fanIndex = 0)
@@ -77,6 +85,19 @@ namespace AsusFanControl
         public ulong Thermal_Read_Cpu_Temperature()
         {
             return AsusWinIO64.Thermal_Read_Cpu_Temperature();
+        }
+
+        public void ResetToDefault()
+        {
+            // Synchronous reset for safety (e.g. ProcessExit)
+            var fanCount = AsusWinIO64.HealthyTable_FanCounts();
+            for(byte fanIndex = 0; fanIndex < fanCount; fanIndex++)
+            {
+                SetFanSpeed(0, fanIndex);
+                // Minimal blocking delay to ensure hardware processes the command if needed,
+                // but keep it fast for shutdown.
+                System.Threading.Thread.Sleep(10);
+            }
         }
     }
 }

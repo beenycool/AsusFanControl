@@ -1,4 +1,4 @@
-﻿using AsusFanControl;
+using AsusFanControl.Core;
 using System;
 using System.Windows.Forms;
 
@@ -16,6 +16,8 @@ namespace AsusFanControlGUI
         {
             InitializeComponent();
             AppDomain.CurrentDomain.ProcessExit += new EventHandler(OnProcessExit);
+            // Watchdog for crash
+            AppDomain.CurrentDomain.UnhandledException += (s, e) => { try { asusControl.ResetToDefault(); } catch { } };
 
             toolStripMenuItemTurnOffControlOnExit.Checked = Properties.Settings.Default.turnOffControlOnExit;
             toolStripMenuItemForbidUnsafeSettings.Checked = Properties.Settings.Default.forbidUnsafeSettings;
@@ -60,7 +62,7 @@ namespace AsusFanControlGUI
         private void OnProcessExit(object sender, EventArgs e)
         {
             if (Properties.Settings.Default.turnOffControlOnExit)
-                asusControl.SetFanSpeeds(0);
+                asusControl.ResetToDefault();
         }
 
         private void Form1_Load(object sender, EventArgs e)
