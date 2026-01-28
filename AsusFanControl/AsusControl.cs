@@ -7,16 +7,27 @@ using System.Threading.Tasks;
 
 namespace AsusFanControl
 {
-    public class AsusControl
+    public class AsusControl : IDisposable
     {
         public AsusControl()
         {
             AsusWinIO64.InitializeWinIo();
         }
 
-        ~AsusControl()
+        public void Dispose()
         {
             AsusWinIO64.ShutdownWinIo();
+            GC.SuppressFinalize(this);
+        }
+
+        public void ResetToDefault()
+        {
+            var fanCount = AsusWinIO64.HealthyTable_FanCounts();
+            for (byte fanIndex = 0; fanIndex < fanCount; fanIndex++)
+            {
+                SetFanSpeed(0, fanIndex);
+                System.Threading.Thread.Sleep(20);
+            }
         }
 
         public void SetFanSpeed(byte value, byte fanIndex = 0)

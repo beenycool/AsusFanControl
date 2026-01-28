@@ -23,65 +23,102 @@ namespace AsusFanControl
             }
 
             var asusControl = new AsusControl();
+            bool skipResetOnExit = false;
 
-            foreach (var arg in args)
+            AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
             {
-                if (arg.StartsWith("--get-fan-speeds"))
+                if (!skipResetOnExit)
                 {
-                    var fanSpeeds = asusControl.GetFanSpeeds();
-                    Console.WriteLine($"Current fan speeds: {string.Join(" ", fanSpeeds)} RPM");
+                    asusControl.ResetToDefault();
                 }
+            };
 
-                if (arg.StartsWith("--set-fan-speeds"))
+            try
+            {
+                foreach (var arg in args)
                 {
-                    var newSpeedStr = arg.Split('=')[1];
-                    var newSpeed = int.Parse(newSpeedStr);
-                    asusControl.SetFanSpeeds(newSpeed);
-
-                    if(newSpeed == 0)
-                        Console.WriteLine("Test mode turned off");
-                    else
-                        Console.WriteLine($"New fan speeds: {newSpeed}%");
-                }
-
-                if (arg.StartsWith("--get-fan-speed="))
-                {
-                    var fanIds = arg.Split('=')[1].Split(',');
-                    foreach (var fanIdStr in fanIds)
+                    if (arg.StartsWith("--get-fan-speeds"))
                     {
-                        var fanId = int.Parse(fanIdStr);
-                        var fanSpeed = asusControl.GetFanSpeed((byte)fanId);
-                        Console.WriteLine($"Current fan speed for fan {fanId}: {fanSpeed} RPM");
+                        var fanSpeeds = asusControl.GetFanSpeeds();
+                        Console.WriteLine($"Current fan speeds: {string.Join(" ", fanSpeeds)} RPM");
                     }
-                }
 
-                if (arg.StartsWith("--get-fan-count"))
-                {
-                    var fanCount = asusControl.HealthyTable_FanCounts();
-                    Console.WriteLine($"Fan count: {fanCount}");
-                }
-
-                if (arg.StartsWith("--set-fan-speed="))
-                {
-                    var fanSettings = arg.Split('=')[1].Split(',');
-                    foreach (var fanSetting in fanSettings)
+                    if (arg.StartsWith("--set-fan-speeds"))
                     {
-                        var fanId = int.Parse(fanSetting.Split(':')[0]);
-                        var fanSpeed = int.Parse(fanSetting.Split(':')[1]);
-                        asusControl.SetFanSpeed(fanSpeed, (byte)fanId);
+                        var newSpeedStr = arg.Split('=')[1];
+                        var newSpeed = int.Parse(newSpeedStr);
+                        asusControl.SetFanSpeeds(newSpeed);
 
-                        if (fanSpeed == 0)
-                            Console.WriteLine($"Test mode turned off for fan {fanId}");
+                        if (newSpeed == 0)
+                            Console.WriteLine("Test mode turned off");
                         else
-                            Console.WriteLine($"New fan speed for fan {fanId}: {fanSpeed}%");
+                            Console.WriteLine($"New fan speeds: {newSpeed}%");
+                    }
+
+                    if (arg.StartsWith("--get-fan-speed="))
+                    {
+                        var fanIds = arg.Split('=')[1].Split(',');
+                        foreach (var fanIdStr in fanIds)
+                        {
+                            if (int.TryParse(fanIdStr, out int fanId))
+                            {
+                                if (fanId >= 0 && fanId <= 255)
+                                {
+                                    var fanSpeed = asusControl.GetFanSpeed((byte)fanId);
+                                    Console.WriteLine($"Current fan speed for fan {fanId}: {fanSpeed} RPM");
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"Error: fan id must be between 0 and 255: {fanId}");
+                                }
+                            }
+                        }
+                    }
+
+                    if (arg.StartsWith("--get-fan-count"))
+                    {
+                        var fanCount = asusControl.HealthyTable_FanCounts();
+                        Console.WriteLine($"Fan count: {fanCount}");
+                    }
+
+                    if (arg.StartsWith("--set-fan-speed="))
+                    {
+                        var fanSettings = arg.Split('=')[1].Split(',');
+                        foreach (var fanSetting in fanSettings)
+                        {
+                            var settingParts = fanSetting.Split(':');
+                            if (settingParts.Length == 2 && int.TryParse(settingParts[0], out int fanId))
+                            {
+                                if (fanId >= 0 && fanId <= 255)
+                                {
+                                    var fanSpeed = int.Parse(settingParts[1]);
+                                    asusControl.SetFanSpeed(fanSpeed, (byte)fanId);
+
+                                    if (fanSpeed == 0)
+                                        Console.WriteLine($"Test mode turned off for fan {fanId}");
+                                    else
+                                        Console.WriteLine($"New fan speed for fan {fanId}: {fanSpeed}%");
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"Error: fan id must be between 0 and 255: {fanId}");
+                                }
+                            }
+                        }
+                    }
+
+                    if (arg.StartsWith("--get-cpu-temp"))
+                    {
+                        var cpuTemp = asusControl.Thermal_Read_Cpu_Temperature();
+                        Console.WriteLine($"Current CPU temp: {cpuTemp}");
                     }
                 }
-
-                if (arg.StartsWith("--get-cpu-temp"))
-                {
-                    var cpuTemp = asusControl.Thermal_Read_Cpu_Temperature();
-                    Console.WriteLine($"Current CPU temp: {cpuTemp}");
-                }
+            }
+            finally
+            {
+                skipResetOnExit = true;
+                asusControl.ResetToDefault();
+                asusControl.Dispose();
             }
 
             return 0;
