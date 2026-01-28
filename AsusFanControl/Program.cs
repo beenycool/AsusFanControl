@@ -175,7 +175,10 @@ namespace AsusFanControl
             finally
             {
                 // Normal exit cleanup
-                if (!skipResetOnExit) asusControl.ResetToDefault();
+                if (!skipResetOnExit)
+                {
+                    try { asusControl.ResetToDefault(); } catch { }
+                }
 
                 // Mark as disposed so ProcessExit doesn't try to use it
                 isDisposed = true;
