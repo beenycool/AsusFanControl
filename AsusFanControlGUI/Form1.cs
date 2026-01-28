@@ -1,6 +1,8 @@
 ﻿using AsusFanControl;
 using System;
 using System.Windows.Forms;
+using System.IO;
+using System.Diagnostics;
 
 namespace AsusFanControlGUI
 {
@@ -11,10 +13,18 @@ namespace AsusFanControlGUI
         Timer timer;
         NotifyIcon trayIcon;
         FanCurve currentFanCurve;
+        PerformanceCounter cpuCounter;
+        Timer loggingTimer;
+        StreamWriter loggingWriter;
 
         public Form1()
         {
             InitializeComponent();
+            try
+            {
+                cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
+            }
+            catch { }
             AppDomain.CurrentDomain.ProcessExit += new EventHandler(OnProcessExit);
 
             toolStripMenuItemTurnOffControlOnExit.Checked = Properties.Settings.Default.turnOffControlOnExit;
@@ -59,6 +69,8 @@ namespace AsusFanControlGUI
 
         private void OnProcessExit(object sender, EventArgs e)
         {
+            stopLogging();
+
             if (Properties.Settings.Default.turnOffControlOnExit)
             {
                 try
@@ -283,6 +295,97 @@ namespace AsusFanControlGUI
             Properties.Settings.Default.updateInterval = (int)numericUpdateInterval.Value;
             Properties.Settings.Default.Save();
             timerRefreshStats();
+        }
+
+        private void toolStripMenuItemStartLogging_Click(object sender, EventArgs e)
+        {
+            if (loggingTimer != null && loggingTimer.Enabled)
+            {
+                stopLogging();
+            }
+            else
+            {
+                startLogging();
+            }
+        }
+
+        private void startLogging()
+        {
+            using (var dlg = new LoggingDialog())
+            {
+                if (dlg.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        loggingWriter = new StreamWriter(dlg.FilePath, true);
+                        if (loggingWriter.BaseStream.Length == 0)
+                        {
+                            loggingWriter.WriteLine("Timestamp,CPU Temp (C),Fan Speed (RPM),CPU Load (%)");
+                        }
+
+                        loggingTimer = new Timer();
+                        loggingTimer.Interval = dlg.Interval;
+                        loggingTimer.Tick += LoggingTimer_Tick;
+                        loggingTimer.Start();
+
+                        toolStripMenuItemStartLogging.Text = "Stop Logging";
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Error starting logging: " + ex.Message);
+                        stopLogging();
+                    }
+                }
+            }
+        }
+
+        private void stopLogging()
+        {
+            if (loggingTimer != null)
+            {
+                loggingTimer.Stop();
+                loggingTimer.Dispose();
+                loggingTimer = null;
+            }
+
+            if (loggingWriter != null)
+            {
+                try
+                {
+                    loggingWriter.Close();
+                    loggingWriter.Dispose();
+                }
+                catch { }
+                loggingWriter = null;
+            }
+
+            if (toolStripMenuItemStartLogging != null && !toolStripMenuItemStartLogging.IsDisposed)
+                toolStripMenuItemStartLogging.Text = "Start Logging";
+        }
+
+        private void LoggingTimer_Tick(object sender, EventArgs e)
+        {
+            try
+            {
+                var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+                var cpuTemp = asusControl.Thermal_Read_Cpu_Temperature();
+                var fanSpeeds = string.Join("|", asusControl.GetFanSpeeds());
+
+                float cpuLoad = 0;
+                if (cpuCounter != null)
+                {
+                    cpuLoad = cpuCounter.NextValue();
+                }
+
+                if (loggingWriter != null)
+                {
+                     loggingWriter.WriteLine($"{timestamp},{cpuTemp},{fanSpeeds},{cpuLoad:F2}");
+                }
+            }
+            catch
+            {
+                // Ignore logging errors to prevent crash
+            }
         }
     }
 }
