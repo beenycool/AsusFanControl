@@ -60,7 +60,24 @@ namespace AsusFanControlGUI
         private void OnProcessExit(object sender, EventArgs e)
         {
             if (Properties.Settings.Default.turnOffControlOnExit)
-                asusControl.SetFanSpeeds(0);
+            {
+                try
+                {
+                    asusControl.ResetToDefault();
+                }
+                catch
+                {
+                    // Ignore exceptions during shutdown
+                }
+                finally
+                {
+                    if (asusControl != null)
+                    {
+                        asusControl.Dispose();
+                        asusControl = null;
+                    }
+                }
+            }
         }
 
         private void Form1_Load(object sender, EventArgs e)
