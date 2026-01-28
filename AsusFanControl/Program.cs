@@ -7,6 +7,8 @@ namespace AsusFanControl
     {
         // Shared flag to control watchdog behavior
         static bool skipResetOnExit = false;
+        // Shared flag to indicate if manual disposal happened
+        static bool isDisposed = false;
 
         /// <summary>
         /// The main entry point for the application.
@@ -33,14 +35,21 @@ namespace AsusFanControl
             // UNLESS the user explicitly requested to set the fan speed and exit.
             AppDomain.CurrentDomain.ProcessExit += (s, e) =>
             {
-                if (!skipResetOnExit) asusControl.ResetToDefault();
-                // Do not dispose here to avoid double-dispose with finally block.
+                // Only reset if we haven't already disposed (which implies we finished main normally)
+                // and if we haven't set the flag to skip reset.
+                if (!isDisposed && !skipResetOnExit)
+                {
+                    try { asusControl.ResetToDefault(); } catch {}
+                }
             };
             AppDomain.CurrentDomain.UnhandledException += (s, e) =>
             {
-                if (!skipResetOnExit) asusControl.ResetToDefault();
+                if (!skipResetOnExit)
+                {
+                    try { asusControl.ResetToDefault(); } catch {}
+                }
                 // We might crash hard after this, but try to clean up.
-                asusControl.Dispose();
+                try { asusControl.Dispose(); } catch {}
             };
 
             try
@@ -93,8 +102,15 @@ namespace AsusFanControl
                         {
                             if (int.TryParse(fanIdStr, out int fanId))
                             {
-                                var fanSpeed = asusControl.GetFanSpeed((byte)fanId);
-                                Console.WriteLine($"Current fan speed for fan {fanId}: {fanSpeed} RPM");
+                                if (fanId >= 0 && fanId <= 255)
+                                {
+                                    var fanSpeed = asusControl.GetFanSpeed((byte)fanId);
+                                    Console.WriteLine($"Current fan speed for fan {fanId}: {fanSpeed} RPM");
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"Error: fan id must be between 0 and 255: {fanId}");
+                                }
                             }
                             else
                             {
@@ -128,12 +144,19 @@ namespace AsusFanControl
                                 int.TryParse(settingParts[0], out int fanId) &&
                                 int.TryParse(settingParts[1], out int fanSpeed))
                             {
-                                asusControl.SetFanSpeed(fanSpeed, (byte)fanId);
+                                if (fanId >= 0 && fanId <= 255)
+                                {
+                                    asusControl.SetFanSpeed(fanSpeed, (byte)fanId);
 
-                                if (fanSpeed == 0)
-                                    Console.WriteLine($"Test mode turned off for fan {fanId}");
+                                    if (fanSpeed == 0)
+                                        Console.WriteLine($"Test mode turned off for fan {fanId}");
+                                    else
+                                        Console.WriteLine($"New fan speed for fan {fanId}: {fanSpeed}%");
+                                }
                                 else
-                                    Console.WriteLine($"New fan speed for fan {fanId}: {fanSpeed}%");
+                                {
+                                    Console.WriteLine($"Error: fan id must be between 0 and 255: {fanId}");
+                                }
                             }
                             else
                             {
@@ -153,6 +176,9 @@ namespace AsusFanControl
             {
                 // Normal exit cleanup
                 if (!skipResetOnExit) asusControl.ResetToDefault();
+
+                // Mark as disposed so ProcessExit doesn't try to use it
+                isDisposed = true;
                 asusControl.Dispose();
             }
 

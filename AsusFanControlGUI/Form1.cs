@@ -17,8 +17,8 @@ namespace AsusFanControlGUI
             InitializeComponent();
             AppDomain.CurrentDomain.ProcessExit += new EventHandler(OnProcessExit);
             // Watchdog for crash
-            AppDomain.CurrentDomain.UnhandledException += (s, e) => { try { asusControl.ResetToDefault(); } catch { } };
-            Application.ThreadException += (s, e) => { try { asusControl.ResetToDefault(); } catch { } };
+            AppDomain.CurrentDomain.UnhandledException += (s, e) => { try { if (asusControl != null) asusControl.ResetToDefault(); } catch { } };
+            Application.ThreadException += (s, e) => { try { if (asusControl != null) asusControl.ResetToDefault(); } catch { } };
 
             toolStripMenuItemTurnOffControlOnExit.Checked = Properties.Settings.Default.turnOffControlOnExit;
             toolStripMenuItemForbidUnsafeSettings.Checked = Properties.Settings.Default.forbidUnsafeSettings;
@@ -59,9 +59,24 @@ namespace AsusFanControlGUI
                 {
                     // Ensure fans are reset if configured to do so
                     if (Properties.Settings.Default.turnOffControlOnExit)
-                        asusControl.ResetToDefault();
+                    {
+                        try
+                        {
+                            asusControl.ResetToDefault();
+                        }
+                        catch
+                        {
+                            // Swallow exceptions during disposal to prevent crashing
+                        }
+                    }
 
-                    asusControl.Dispose();
+                    try
+                    {
+                        asusControl.Dispose();
+                    }
+                    catch { }
+
+                    asusControl = null; // Prevent use-after-dispose
                 }
             }
             base.Dispose(disposing);
@@ -88,10 +103,16 @@ namespace AsusFanControlGUI
 
         private void OnProcessExit(object sender, EventArgs e)
         {
-            if (Properties.Settings.Default.turnOffControlOnExit)
+            if (Properties.Settings.Default.turnOffControlOnExit && asusControl != null)
             {
-                // asusControl handles disposal checks internally
-                asusControl.ResetToDefault();
+                try
+                {
+                    asusControl.ResetToDefault();
+                }
+                catch
+                {
+                    // Ignore exceptions during shutdown
+                }
             }
             // Do not dispose here to avoid race with Form.Dispose(bool) or double-dispose.
             // asusControl.Dispose() will be called when the Form is disposed.
@@ -168,7 +189,7 @@ namespace AsusFanControlGUI
             buttonRefreshRPM_Click(sender, e);
             buttonRefreshCPUTemp_Click(sender, e);
 
-            if (checkBoxAuto.Checked)
+            if (checkBoxAuto.Checked && asusControl != null)
             {
                 ulong tempU = asusControl.Thermal_Read_Cpu_Temperature();
                 int temp = (int)tempU;
@@ -218,7 +239,7 @@ namespace AsusFanControlGUI
 
         private void setFanSpeed()
         {
-            if (checkBoxAuto.Checked)
+            if (checkBoxAuto.Checked || asusControl == null)
                 return;
 
             var value = trackBarFanSpeed.Value;
@@ -269,12 +290,14 @@ namespace AsusFanControlGUI
 
         private void buttonRefreshRPM_Click(object sender, EventArgs e)
         {
-            labelRPM.Text = string.Join(" ", asusControl.GetFanSpeeds());
+            if (asusControl != null)
+                labelRPM.Text = string.Join(" ", asusControl.GetFanSpeeds());
         }
 
         private void buttonRefreshCPUTemp_Click(object sender, EventArgs e)
         {
-            labelCPUTemp.Text = $"{asusControl.Thermal_Read_Cpu_Temperature()}";
+            if (asusControl != null)
+                labelCPUTemp.Text = $"{asusControl.Thermal_Read_Cpu_Temperature()}";
         }
 
         private void checkBoxAuto_CheckedChanged(object sender, EventArgs e)
