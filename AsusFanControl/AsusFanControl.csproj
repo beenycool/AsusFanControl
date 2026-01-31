@@ -63,18 +63,17 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AsusControl.cs" />
-    <Compile Include="AsusWinIO64.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config" />
+    <ProjectReference Include="..\AsusFanControl.Core\AsusFanControl.Core.csproj">
+      <Project>{5DE454F6-67E4-42EB-A427-04022A4E0CA2}</Project>
+      <Name>AsusFanControl.Core</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="AsusWinIO64.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <None Include="App.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

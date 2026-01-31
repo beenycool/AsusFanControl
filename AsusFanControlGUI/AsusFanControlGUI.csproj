@@ -69,7 +69,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="FanCurve.cs" />
     <Compile Include="FanCurveControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -120,9 +119,9 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\AsusFanControl\AsusFanControl.csproj">
-      <Project>{df94635e-4107-4ee9-8675-7137e750bc86}</Project>
-      <Name>AsusFanControl</Name>
+    <ProjectReference Include="..\AsusFanControl.Core\AsusFanControl.Core.csproj">
+      <Project>{5DE454F6-67E4-42EB-A427-04022A4E0CA2}</Project>
+      <Name>AsusFanControl.Core</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
