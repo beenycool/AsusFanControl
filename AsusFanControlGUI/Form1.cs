@@ -1,4 +1,4 @@
-﻿using AsusFanControl;
+using AsusFanControl.Core;
 using System;
 using System.Windows.Forms;
 using System.IO;
@@ -26,6 +26,9 @@ namespace AsusFanControlGUI
             }
             catch { }
             AppDomain.CurrentDomain.ProcessExit += new EventHandler(OnProcessExit);
+            // Watchdog for crash
+            AppDomain.CurrentDomain.UnhandledException += (s, e) => { try { if (asusControl != null) asusControl.ResetToDefault(); } catch { } };
+            Application.ThreadException += (s, e) => { try { if (asusControl != null) asusControl.ResetToDefault(); } catch { } };
 
             toolStripMenuItemTurnOffControlOnExit.Checked = Properties.Settings.Default.turnOffControlOnExit;
             toolStripMenuItemForbidUnsafeSettings.Checked = Properties.Settings.Default.forbidUnsafeSettings;
@@ -46,6 +49,47 @@ namespace AsusFanControlGUI
             }
 
             updateUIState();
+        }
+
+        /// <summary>
+        /// Clean up any resources being used.
+        /// </summary>
+        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                if (components != null)
+                {
+                    components.Dispose();
+                }
+
+                // Custom cleanup
+                if (asusControl != null)
+                {
+                    // Ensure fans are reset if configured to do so
+                    if (Properties.Settings.Default.turnOffControlOnExit)
+                    {
+                        try
+                        {
+                            asusControl.ResetToDefault();
+                        }
+                        catch
+                        {
+                            // Swallow exceptions during disposal to prevent crashing
+                        }
+                    }
+
+                    try
+                    {
+                        asusControl.Dispose();
+                    }
+                    catch { }
+
+                    asusControl = null; // Prevent use-after-dispose
+                }
+            }
+            base.Dispose(disposing);
         }
 
         private void updateUIState()
@@ -69,9 +113,7 @@ namespace AsusFanControlGUI
 
         private void OnProcessExit(object sender, EventArgs e)
         {
-            stopLogging();
-
-            if (Properties.Settings.Default.turnOffControlOnExit)
+            if (Properties.Settings.Default.turnOffControlOnExit && asusControl != null)
             {
                 try
                 {
@@ -81,15 +123,9 @@ namespace AsusFanControlGUI
                 {
                     // Ignore exceptions during shutdown
                 }
-                finally
-                {
-                    if (asusControl != null)
-                    {
-                        asusControl.Dispose();
-                        asusControl = null;
-                    }
-                }
             }
+            // Do not dispose here to avoid race with Form.Dispose(bool) or double-dispose.
+            // asusControl.Dispose() will be called when the Form is disposed.
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -163,7 +199,7 @@ namespace AsusFanControlGUI
             buttonRefreshRPM_Click(sender, e);
             buttonRefreshCPUTemp_Click(sender, e);
 
-            if (checkBoxAuto.Checked)
+            if (checkBoxAuto.Checked && asusControl != null)
             {
                 ulong tempU = asusControl.Thermal_Read_Cpu_Temperature();
                 int temp = (int)tempU;
@@ -213,7 +249,7 @@ namespace AsusFanControlGUI
 
         private void setFanSpeed()
         {
-            if (checkBoxAuto.Checked)
+            if (checkBoxAuto.Checked || asusControl == null)
                 return;
 
             var value = trackBarFanSpeed.Value;
@@ -264,12 +300,14 @@ namespace AsusFanControlGUI
 
         private void buttonRefreshRPM_Click(object sender, EventArgs e)
         {
-            labelRPM.Text = string.Join(" ", asusControl.GetFanSpeeds());
+            if (asusControl != null)
+                labelRPM.Text = string.Join(" ", asusControl.GetFanSpeeds());
         }
 
         private void buttonRefreshCPUTemp_Click(object sender, EventArgs e)
         {
-            labelCPUTemp.Text = $"{asusControl.Thermal_Read_Cpu_Temperature()}";
+            if (asusControl != null)
+                labelCPUTemp.Text = $"{asusControl.Thermal_Read_Cpu_Temperature()}";
         }
 
         private void checkBoxAuto_CheckedChanged(object sender, EventArgs e)

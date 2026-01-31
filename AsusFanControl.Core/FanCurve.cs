@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace AsusFanControlGUI
+namespace AsusFanControl.Core
 {
     public class FanCurvePoint
     {

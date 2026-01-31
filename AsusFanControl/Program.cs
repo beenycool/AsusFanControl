@@ -1,9 +1,15 @@
-﻿using System;
+using System;
+using AsusFanControl.Core;
 
 namespace AsusFanControl
 {
     internal static class Program
     {
+        // Shared flag to control watchdog behavior
+        static bool skipResetOnExit = false;
+        // Shared flag to indicate if manual disposal happened
+        static bool isDisposed = false;
+
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
@@ -22,15 +28,28 @@ namespace AsusFanControl
                 return 1;
             }
 
-            var asusControl = new AsusControl();
-            bool skipResetOnExit = false;
+            // Using Interface type for better abstraction
+            IFanController asusControl = new AsusControl();
 
-            AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
+            // Watchdog: Ensure fans are reset to default on exit or crash
+            // UNLESS the user explicitly requested to set the fan speed and exit.
+            AppDomain.CurrentDomain.ProcessExit += (s, e) =>
+            {
+                // Only reset if we haven't already disposed (which implies we finished main normally)
+                // and if we haven't set the flag to skip reset.
+                if (!isDisposed && !skipResetOnExit)
+                {
+                    try { asusControl.ResetToDefault(); } catch {}
+                }
+            };
+            AppDomain.CurrentDomain.UnhandledException += (s, e) =>
             {
                 if (!skipResetOnExit)
                 {
-                    asusControl.ResetToDefault();
+                    try { asusControl.ResetToDefault(); } catch {}
                 }
+                // We might crash hard after this, but try to clean up.
+                try { asusControl.Dispose(); } catch {}
             };
 
             try
@@ -45,19 +64,40 @@ namespace AsusFanControl
 
                     if (arg.StartsWith("--set-fan-speeds"))
                     {
-                        var newSpeedStr = arg.Split('=')[1];
-                        var newSpeed = int.Parse(newSpeedStr);
-                        asusControl.SetFanSpeeds(newSpeed);
+                        skipResetOnExit = true; // User wants this speed to stick
 
-                        if (newSpeed == 0)
-                            Console.WriteLine("Test mode turned off");
+                        var parts = arg.Split('=');
+                        if (parts.Length < 2 || string.IsNullOrWhiteSpace(parts[1]))
+                        {
+                            Console.WriteLine("Error: Invalid format for --set-fan-speeds. Usage: --set-fan-speeds=50");
+                            continue;
+                        }
+
+                        if (int.TryParse(parts[1], out int newSpeed))
+                        {
+                            asusControl.SetFanSpeeds(newSpeed);
+
+                            if(newSpeed == 0)
+                                Console.WriteLine("Test mode turned off");
+                            else
+                                Console.WriteLine($"New fan speeds: {newSpeed}%");
+                        }
                         else
-                            Console.WriteLine($"New fan speeds: {newSpeed}%");
+                        {
+                            Console.WriteLine($"Error: Invalid number format for speed: {parts[1]}");
+                        }
                     }
 
                     if (arg.StartsWith("--get-fan-speed="))
                     {
-                        var fanIds = arg.Split('=')[1].Split(',');
+                        var parts = arg.Split('=');
+                        if (parts.Length < 2 || string.IsNullOrWhiteSpace(parts[1]))
+                        {
+                             Console.WriteLine("Error: Invalid format. Usage: --get-fan-speed=0,1");
+                             continue;
+                        }
+
+                        var fanIds = parts[1].Split(',');
                         foreach (var fanIdStr in fanIds)
                         {
                             if (int.TryParse(fanIdStr, out int fanId))
@@ -72,6 +112,10 @@ namespace AsusFanControl
                                     Console.WriteLine($"Error: fan id must be between 0 and 255: {fanId}");
                                 }
                             }
+                            else
+                            {
+                                Console.WriteLine($"Error: Invalid fan ID: {fanIdStr}");
+                            }
                         }
                     }
 
@@ -83,15 +127,25 @@ namespace AsusFanControl
 
                     if (arg.StartsWith("--set-fan-speed="))
                     {
-                        var fanSettings = arg.Split('=')[1].Split(',');
+                        skipResetOnExit = true; // User wants this speed to stick
+
+                        var parts = arg.Split('=');
+                        if (parts.Length < 2 || string.IsNullOrWhiteSpace(parts[1]))
+                        {
+                             Console.WriteLine("Error: Invalid format. Usage: --set-fan-speed=0:50,1:100");
+                             continue;
+                        }
+
+                        var fanSettings = parts[1].Split(',');
                         foreach (var fanSetting in fanSettings)
                         {
                             var settingParts = fanSetting.Split(':');
-                            if (settingParts.Length == 2 && int.TryParse(settingParts[0], out int fanId))
+                            if (settingParts.Length == 2 &&
+                                int.TryParse(settingParts[0], out int fanId) &&
+                                int.TryParse(settingParts[1], out int fanSpeed))
                             {
                                 if (fanId >= 0 && fanId <= 255)
                                 {
-                                    var fanSpeed = int.Parse(settingParts[1]);
                                     asusControl.SetFanSpeed(fanSpeed, (byte)fanId);
 
                                     if (fanSpeed == 0)
@@ -103,6 +157,10 @@ namespace AsusFanControl
                                 {
                                     Console.WriteLine($"Error: fan id must be between 0 and 255: {fanId}");
                                 }
+                            }
+                            else
+                            {
+                                Console.WriteLine($"Error: Invalid fan setting format: {fanSetting}");
                             }
                         }
                     }
@@ -116,8 +174,14 @@ namespace AsusFanControl
             }
             finally
             {
-                skipResetOnExit = true;
-                asusControl.ResetToDefault();
+                // Normal exit cleanup
+                if (!skipResetOnExit)
+                {
+                    try { asusControl.ResetToDefault(); } catch { }
+                }
+
+                // Mark as disposed so ProcessExit doesn't try to use it
+                isDisposed = true;
                 asusControl.Dispose();
             }
 
