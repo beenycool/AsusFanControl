@@ -47,7 +47,7 @@ jobs:
 
     # Restore the application to populate the obj folder with RuntimeIdentifiers
     - name: Restore NuGet packages
-      run: nuget restore $env:Solution_Name
+      run: dotnet restore $env:Solution_Name
 
     # Execute all unit tests in the solution
     # (Optional: Add test step if there are tests)
