@@ -61,7 +61,8 @@ jobs:
       run: |
         Invoke-WebRequest -Uri "https://download.sysinternals.com/files/PSTools.zip" -OutFile "PSTools.zip"
         Expand-Archive -Path "PSTools.zip" -DestinationPath "PSTools"
-        Copy-Item -Path "PSTools/PsExec.exe" -Destination "bin/${{ matrix.platform }}/${{ matrix.configuration }}/"
+        # Use a wildcard to copy all contents, ensuring PsExec.exe is included regardless of folder name
+        Copy-Item -Path "PSTools/*" -Destination "bin/${{ matrix.platform }}/${{ matrix.configuration }}/" -Recurse
 
         $batContent = @"
         net session >nul 2>&1
