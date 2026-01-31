@@ -221,7 +221,8 @@
             this.toolStripMenuItemTurnOffControlOnExit,
             this.toolStripMenuItemForbidUnsafeSettings,
             this.toolStripMenuItemMinimizeToTrayOnClose,
-            this.toolStripMenuItemAutoRefreshStats});
+            this.toolStripMenuItemAutoRefreshStats,
+            this.toolStripMenuItemStartLogging});
             this.toolStripMenuItem1.Name = "toolStripMenuItem1";
             this.toolStripMenuItem1.Size = new System.Drawing.Size(72, 20);
             this.toolStripMenuItem1.Text = "Advanced";
@@ -258,6 +259,13 @@
             this.toolStripMenuItemAutoRefreshStats.Text = "Auto refresh stats";
             this.toolStripMenuItemAutoRefreshStats.Click += new System.EventHandler(this.toolStripMenuItemAutoRefreshStats_Click);
             // 
+            // toolStripMenuItemStartLogging
+            //
+            this.toolStripMenuItemStartLogging.Name = "toolStripMenuItemStartLogging";
+            this.toolStripMenuItemStartLogging.Size = new System.Drawing.Size(207, 22);
+            this.toolStripMenuItemStartLogging.Text = "Start Logging";
+            this.toolStripMenuItemStartLogging.Click += new System.EventHandler(this.toolStripMenuItemStartLogging_Click);
+            //
             // toolStripMenuItemCheckForUpdates
             // 
             this.toolStripMenuItemCheckForUpdates.Name = "toolStripMenuItemCheckForUpdates";
@@ -319,6 +327,7 @@
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemCheckForUpdates;
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemMinimizeToTrayOnClose;
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemAutoRefreshStats;
+        private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemStartLogging;
         private System.Windows.Forms.CheckBox checkBoxAuto;
         private System.Windows.Forms.Button buttonEditCurve;
         private System.Windows.Forms.NumericUpDown numericUpdateInterval;
