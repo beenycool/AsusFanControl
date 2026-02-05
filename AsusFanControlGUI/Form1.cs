@@ -27,8 +27,8 @@ namespace AsusFanControlGUI
             catch { }
             AppDomain.CurrentDomain.ProcessExit += new EventHandler(OnProcessExit);
             // Watchdog for crash
-            AppDomain.CurrentDomain.UnhandledException += (s, e) => { try { if (asusControl != null) asusControl.ResetToDefault(); } catch { } };
-            Application.ThreadException += (s, e) => { try { if (asusControl != null) asusControl.ResetToDefault(); } catch { } };
+            AppDomain.CurrentDomain.UnhandledException += (s, e) => { try { if (asusControl != null) asusControl.ResetToDefaultAsync().GetAwaiter().GetResult(); } catch { } };
+            Application.ThreadException += (s, e) => { try { if (asusControl != null) asusControl.ResetToDefaultAsync().GetAwaiter().GetResult(); } catch { } };
 
             toolStripMenuItemTurnOffControlOnExit.Checked = Properties.Settings.Default.turnOffControlOnExit;
             toolStripMenuItemForbidUnsafeSettings.Checked = Properties.Settings.Default.forbidUnsafeSettings;
@@ -72,7 +72,7 @@ namespace AsusFanControlGUI
                     {
                         try
                         {
-                            asusControl.ResetToDefault();
+                            asusControl.ResetToDefaultAsync().GetAwaiter().GetResult();
                         }
                         catch
                         {
@@ -117,7 +117,7 @@ namespace AsusFanControlGUI
             {
                 try
                 {
-                    asusControl.ResetToDefault();
+                    asusControl.ResetToDefaultAsync().GetAwaiter().GetResult();
                 }
                 catch
                 {
