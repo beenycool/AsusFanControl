@@ -16,7 +16,6 @@ namespace AsusFanControl.Core
 
         // Static lock to synchronize access to the shared hardware resource (driver/DLL state)
         private static readonly object _hardwareLock = new object();
-
         private readonly int _fanCount;
         private bool _disposed = false;
 
