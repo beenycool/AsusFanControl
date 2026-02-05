@@ -73,13 +73,18 @@ namespace AsusFanControl.Core
                 }
 
                 _cts?.Dispose();
+                _cts = null;
             }
 
             lock (_hardwareLock)
             {
                 if (_disposed) return;
 
-                _instanceCount--;
+                if (_instanceCount > 0)
+                {
+                    _instanceCount--;
+                }
+
                 if (_instanceCount == 0)
                 {
                     try
@@ -98,14 +103,14 @@ namespace AsusFanControl.Core
 
         private void UpdateFanSpeeds()
         {
-            var newSpeeds = new int[_fanCount];
+            if (_disposed) return;
 
+            var newSpeeds = new int[_fanCount];
             for (byte fanIndex = 0; fanIndex < _fanCount; fanIndex++)
             {
                 lock (_hardwareLock)
                 {
                     if (_disposed) return;
-
                     AsusWinIO64.HealthyTable_SetFanIndex(fanIndex);
                     newSpeeds[fanIndex] = AsusWinIO64.HealthyTable_FanRPM();
                 }
@@ -178,6 +183,8 @@ namespace AsusFanControl.Core
 
         public int GetFanSpeed(byte fanIndex = 0)
         {
+            if (_disposed) return 0;
+
             lock (_hardwareLock)
             {
                 if (_disposed) return 0;
@@ -210,11 +217,20 @@ namespace AsusFanControl.Core
         public Task ResetToDefaultAsync()
         {
             if (_disposed) return Task.CompletedTask;
-            return Task.Run(() => ResetToDefault());
+
+            lock (_hardwareLock)
+            {
+                if (_disposed) return Task.CompletedTask;
+                ResetToDefaultInternal();
+            }
+
+            return Task.CompletedTask;
         }
 
         public void ResetToDefault()
         {
+            if (_disposed) return;
+
             lock (_hardwareLock)
             {
                 if (_disposed) return;
