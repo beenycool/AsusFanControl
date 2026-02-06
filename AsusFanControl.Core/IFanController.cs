@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace AsusFanControl.Core
 {
@@ -11,6 +12,6 @@ namespace AsusFanControl.Core
         List<int> GetFanSpeeds();
         int HealthyTable_FanCounts();
         ulong Thermal_Read_Cpu_Temperature();
-        void ResetToDefault();
+        Task ResetToDefaultAsync();
     }
 }

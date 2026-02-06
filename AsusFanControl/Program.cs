@@ -39,14 +39,14 @@ namespace AsusFanControl
                 // and if we haven't set the flag to skip reset.
                 if (!isDisposed && !skipResetOnExit)
                 {
-                    try { asusControl.ResetToDefault(); } catch {}
+                    try { asusControl.ResetToDefaultAsync().GetAwaiter().GetResult(); } catch {}
                 }
             };
             AppDomain.CurrentDomain.UnhandledException += (s, e) =>
             {
                 if (!skipResetOnExit)
                 {
-                    try { asusControl.ResetToDefault(); } catch {}
+                    try { asusControl.ResetToDefaultAsync().GetAwaiter().GetResult(); } catch {}
                 }
                 // We might crash hard after this, but try to clean up.
                 try { asusControl.Dispose(); } catch {}
@@ -177,7 +177,7 @@ namespace AsusFanControl
                 // Normal exit cleanup
                 if (!skipResetOnExit)
                 {
-                    try { asusControl.ResetToDefault(); } catch { }
+                    try { asusControl.ResetToDefaultAsync().GetAwaiter().GetResult(); } catch { }
                 }
 
                 // Mark as disposed so ProcessExit doesn't try to use it
