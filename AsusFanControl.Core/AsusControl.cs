@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading.Tasks;
-using System.Threading;
 
 namespace AsusFanControl.Core
 {
@@ -63,14 +63,14 @@ namespace AsusFanControl.Core
             SetFanSpeed(value, fanIndex);
         }
 
-        private void SetFanSpeedsSync(byte value)
+        private async Task SetFanSpeedsAsync(byte value)
         {
             if (_disposed) return;
             var fanCount = AsusWinIO64.HealthyTable_FanCounts();
             for(byte fanIndex = 0; fanIndex < fanCount; fanIndex++)
             {
                 SetFanSpeed(value, fanIndex);
-                Thread.Sleep(20);
+                await Task.Delay(20).ConfigureAwait(false);
             }
         }
 
@@ -79,15 +79,15 @@ namespace AsusFanControl.Core
             if (_disposed) return;
             percent = ClampPercentage(percent);
             var value = (byte)(percent / 100.0f * 255);
-            Task.Run(() =>
+            Task.Run(async () =>
             {
                 try
                 {
-                    SetFanSpeedsSync(value);
+                    await SetFanSpeedsAsync(value).ConfigureAwait(false);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Ignore exceptions to prevent crash
+                    Debug.WriteLine($"AsusFanControl failed to set fan speeds: {ex}");
                 }
             });
         }
