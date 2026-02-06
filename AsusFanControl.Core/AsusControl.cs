@@ -126,7 +126,7 @@ namespace AsusFanControl.Core
                 SetFanSpeed(0, fanIndex);
                 // Minimal blocking delay to ensure hardware processes the command if needed,
                 // but keep it fast for shutdown.
-                await Task.Delay(ResetCommandDelayMs);
+                await Task.Delay(ResetCommandDelayMs).ConfigureAwait(false);
             }
         }
     }
