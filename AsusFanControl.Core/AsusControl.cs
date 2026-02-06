@@ -155,8 +155,7 @@ namespace AsusFanControl.Core
         private async Task SetFanSpeeds(byte value)
         {
             if (_disposed) return;
-            var fanCount = _fanCount;
-            for(byte fanIndex = 0; fanIndex < fanCount; fanIndex++)
+            for(byte fanIndex = 0; fanIndex < _fanCount; fanIndex++)
             {
                 // SetFanSpeed acquires the lock internally
                 SetFanSpeed(value, fanIndex);
@@ -215,8 +214,7 @@ namespace AsusFanControl.Core
         {
             if (_disposed) return Task.CompletedTask;
             // Synchronous reset for safety (e.g. ProcessExit)
-            var fanCount = _fanCount;
-            for(byte fanIndex = 0; fanIndex < fanCount; fanIndex++)
+            for(byte fanIndex = 0; fanIndex < _fanCount; fanIndex++)
             {
                 SetFanSpeed(0, fanIndex);
                 // Minimal blocking delay to ensure hardware processes the command if needed,
