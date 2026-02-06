@@ -119,9 +119,9 @@ namespace AsusFanControl.Core
             return AsusWinIO64.Thermal_Read_Cpu_Temperature();
         }
 
-        public void ResetToDefault()
+        public Task ResetToDefaultAsync()
         {
-            if (_disposed) return;
+            if (_disposed) return Task.CompletedTask;
             // Synchronous reset for safety (e.g. ProcessExit)
             var fanCount = _fanCount;
             for(byte fanIndex = 0; fanIndex < fanCount; fanIndex++)
@@ -131,6 +131,7 @@ namespace AsusFanControl.Core
                 // but keep it fast for shutdown.
                 System.Threading.Thread.Sleep(ResetCommandDelayMs);
             }
+            return Task.CompletedTask;
         }
     }
 }
