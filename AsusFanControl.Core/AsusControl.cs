@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading.Tasks;
 
 namespace AsusFanControl.Core
@@ -12,11 +11,13 @@ namespace AsusFanControl.Core
         private const int MinFanSpeed = 0;
         private const int MaxFanSpeed = 100;
         private const int ResetCommandDelayMs = 10;
+        private readonly int _fanCount;
         private bool _disposed = false;
 
         public AsusControl()
         {
             AsusWinIO64.InitializeWinIo();
+            _fanCount = AsusWinIO64.HealthyTable_FanCounts();
         }
 
         ~AsusControl()
@@ -63,14 +64,14 @@ namespace AsusFanControl.Core
             SetFanSpeed(value, fanIndex);
         }
 
-        private async Task SetFanSpeedsAsync(byte value)
+        private async Task SetFanSpeeds(byte value)
         {
             if (_disposed) return;
-            var fanCount = AsusWinIO64.HealthyTable_FanCounts();
+            var fanCount = _fanCount;
             for(byte fanIndex = 0; fanIndex < fanCount; fanIndex++)
             {
                 SetFanSpeed(value, fanIndex);
-                await Task.Delay(20).ConfigureAwait(false);
+                await Task.Delay(20);
             }
         }
 
@@ -79,17 +80,7 @@ namespace AsusFanControl.Core
             if (_disposed) return;
             percent = ClampPercentage(percent);
             var value = (byte)(percent / 100.0f * 255);
-            Task.Run(async () =>
-            {
-                try
-                {
-                    await SetFanSpeedsAsync(value).ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"AsusFanControl failed to set fan speeds: {ex}");
-                }
-            });
+            _ = SetFanSpeeds(value);
         }
 
         public int GetFanSpeed(byte fanIndex = 0)
@@ -106,7 +97,7 @@ namespace AsusFanControl.Core
 
             var fanSpeeds = new List<int>();
 
-            var fanCount = AsusWinIO64.HealthyTable_FanCounts();
+            var fanCount = _fanCount;
             for (byte fanIndex = 0; fanIndex < fanCount; fanIndex++)
             {
                 var fanSpeed = GetFanSpeed(fanIndex);
@@ -119,7 +110,7 @@ namespace AsusFanControl.Core
         public int HealthyTable_FanCounts()
         {
             if (_disposed) return 0;
-            return AsusWinIO64.HealthyTable_FanCounts();
+            return _fanCount;
         }
 
         public ulong Thermal_Read_Cpu_Temperature()
@@ -128,16 +119,17 @@ namespace AsusFanControl.Core
             return AsusWinIO64.Thermal_Read_Cpu_Temperature();
         }
 
-        public async Task ResetToDefaultAsync()
+        public void ResetToDefault()
         {
             if (_disposed) return;
-            var fanCount = AsusWinIO64.HealthyTable_FanCounts();
+            // Synchronous reset for safety (e.g. ProcessExit)
+            var fanCount = _fanCount;
             for(byte fanIndex = 0; fanIndex < fanCount; fanIndex++)
             {
                 SetFanSpeed(0, fanIndex);
                 // Minimal blocking delay to ensure hardware processes the command if needed,
                 // but keep it fast for shutdown.
-                await Task.Delay(ResetCommandDelayMs).ConfigureAwait(false);
+                System.Threading.Thread.Sleep(ResetCommandDelayMs);
             }
         }
     }
