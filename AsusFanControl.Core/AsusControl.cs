@@ -95,7 +95,7 @@ namespace AsusFanControl.Core
         {
             if (_disposed) return new List<int>();
 
-            var fanSpeeds = new List<int>();
+            var fanSpeeds = new List<int>(_fanCount);
 
             var fanCount = _fanCount;
             for (byte fanIndex = 0; fanIndex < fanCount; fanIndex++)
