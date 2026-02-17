@@ -24,19 +24,35 @@ namespace AsusFanControl.Core
 
         public int GetTargetSpeed(int currentTemp)
         {
-            if (Points == null || Points.Count == 0)
+            var points = Points;
+            if (points == null || points.Count == 0)
                 return 0;
 
-            // Sort points by temperature
-            var sortedPoints = Points.OrderBy(p => p.Temperature).ToList();
+            // Optimization: Avoid allocation if already sorted
+            List<FanCurvePoint> sortedPoints = points;
+            bool isSorted = true;
+            for (int i = 0; i < points.Count - 1; i++)
+            {
+                if (points[i].Temperature > points[i + 1].Temperature)
+                {
+                    isSorted = false;
+                    break;
+                }
+            }
+
+            if (!isSorted)
+            {
+                // Sort points by temperature
+                sortedPoints = points.OrderBy(p => p.Temperature).ToList();
+            }
 
             // If below first point
-            if (currentTemp <= sortedPoints.First().Temperature)
-                return sortedPoints.First().Speed;
+            if (currentTemp <= sortedPoints[0].Temperature)
+                return sortedPoints[0].Speed;
 
             // If above last point
-            if (currentTemp >= sortedPoints.Last().Temperature)
-                return sortedPoints.Last().Speed;
+            if (currentTemp >= sortedPoints[sortedPoints.Count - 1].Temperature)
+                return sortedPoints[sortedPoints.Count - 1].Speed;
 
             // Interpolate
             for (int i = 0; i < sortedPoints.Count - 1; i++)
@@ -57,7 +73,7 @@ namespace AsusFanControl.Core
                 }
             }
 
-            return sortedPoints.Last().Speed;
+            return sortedPoints[sortedPoints.Count - 1].Speed;
         }
 
         public override string ToString()
