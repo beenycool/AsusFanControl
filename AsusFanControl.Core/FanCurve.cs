@@ -24,16 +24,20 @@ namespace AsusFanControl.Core
 
         public int GetTargetSpeed(int currentTemp)
         {
+            // Thread-safety: Create a local copy of the list.
             var points = Points;
             if (points == null || points.Count == 0)
                 return 0;
 
-            // Optimization: Avoid allocation if already sorted
-            List<FanCurvePoint> sortedPoints = points;
+            // Use ToList() to create a snapshot. This is O(N) but safer than operating on the mutable list directly.
+            // It is still faster than OrderBy(...).ToList() which involves sorting overhead + allocations.
+            List<FanCurvePoint> sortedPoints = points.ToList();
+
+            // Check if already sorted (O(N))
             bool isSorted = true;
-            for (int i = 0; i < points.Count - 1; i++)
+            for (int i = 0; i < sortedPoints.Count - 1; i++)
             {
-                if (points[i].Temperature > points[i + 1].Temperature)
+                if (sortedPoints[i].Temperature > sortedPoints[i + 1].Temperature)
                 {
                     isSorted = false;
                     break;
@@ -42,8 +46,9 @@ namespace AsusFanControl.Core
 
             if (!isSorted)
             {
-                // Sort points by temperature
-                sortedPoints = points.OrderBy(p => p.Temperature).ToList();
+                // Sort in-place (O(N log N)) only if needed.
+                // Since we operate on a local copy, this is thread-safe.
+                sortedPoints.Sort((a, b) => a.Temperature.CompareTo(b.Temperature));
             }
 
             // If below first point
