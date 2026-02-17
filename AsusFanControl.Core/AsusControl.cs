@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AsusFanControl.Core
@@ -11,13 +12,34 @@ namespace AsusFanControl.Core
         private const int MinFanSpeed = 0;
         private const int MaxFanSpeed = 100;
         private const int ResetCommandDelayMs = 10;
+
+        // Static lock to synchronize access to the shared hardware resource (driver/DLL state)
+        private static readonly object _hardwareLock = new object();
+
         private readonly int _fanCount;
         private bool _disposed = false;
 
+        // Cache for fan speeds to enable non-blocking reads
+        private volatile int[] _cachedFanSpeeds;
+        private CancellationTokenSource _cts;
+        private Task _monitorTask;
+
         public AsusControl()
         {
-            AsusWinIO64.InitializeWinIo();
-            _fanCount = AsusWinIO64.HealthyTable_FanCounts();
+            lock (_hardwareLock)
+            {
+                AsusWinIO64.InitializeWinIo();
+                _fanCount = AsusWinIO64.HealthyTable_FanCounts();
+            }
+
+            _cachedFanSpeeds = new int[_fanCount];
+            _cts = new CancellationTokenSource();
+
+            // Perform initial read synchronously to populate cache immediately
+            UpdateFanSpeeds();
+
+            // Start background monitoring task
+            _monitorTask = Task.Run(() => MonitorLoop(_cts.Token));
         }
 
         ~AsusControl()
@@ -35,18 +57,82 @@ namespace AsusFanControl.Core
         {
             if (!_disposed)
             {
+                if (disposing)
+                {
+                    // Stop the background task
+                    _cts?.Cancel();
+                    try
+                    {
+                        _monitorTask?.Wait(2000); // Wait up to 2 seconds for clean exit
+                    }
+                    catch { /* Ignore cancellation/task errors */ }
+                    _cts?.Dispose();
+                }
+
                 // Unmanaged resources
-                AsusWinIO64.ShutdownWinIo();
+                lock (_hardwareLock)
+                {
+                    AsusWinIO64.ShutdownWinIo();
+                }
                 _disposed = true;
+            }
+        }
+
+        private void UpdateFanSpeeds()
+        {
+            if (_disposed) return;
+
+            // Create a local array to store new values
+            var newSpeeds = new int[_fanCount];
+
+            // Read each fan speed individually
+            // Locking per fan allows other operations (like SetFanSpeed) to interleave
+            for (byte i = 0; i < _fanCount; i++)
+            {
+                lock (_hardwareLock)
+                {
+                    AsusWinIO64.HealthyTable_SetFanIndex(i);
+                    newSpeeds[i] = AsusWinIO64.HealthyTable_FanRPM();
+                }
+            }
+
+            // Atomically replace the reference to the cached array
+            _cachedFanSpeeds = newSpeeds;
+        }
+
+        private async Task MonitorLoop(CancellationToken token)
+        {
+            while (!token.IsCancellationRequested)
+            {
+                try
+                {
+                    // Wait for the update interval (e.g., 1000ms)
+                    await Task.Delay(1000, token);
+
+                    if (_disposed) break;
+
+                    UpdateFanSpeeds();
+                }
+                catch (TaskCanceledException)
+                {
+                    break;
+                }
+                catch
+                {
+                    // Ignore errors in background loop to prevent crash
+                }
             }
         }
 
         private void SetFanSpeed(byte value, byte fanIndex = 0)
         {
             if (_disposed) return;
-            AsusWinIO64.HealthyTable_SetFanIndex(fanIndex);
-            AsusWinIO64.HealthyTable_SetFanTestMode(value > 0 ? FanModeManual : FanModeDefault);
-            AsusWinIO64.HealthyTable_SetFanPwmDuty(value);
+            lock (_hardwareLock)
+            {
+                AsusWinIO64.HealthyTable_SetFanIndex(fanIndex);
+                AsusWinIO64.HealthyTable_SetFanTestMode(value > 0 ? FanModeManual : FanModeDefault);
+                AsusWinIO64.HealthyTable_SetFanPwmDuty(value);
+            }
         }
 
         private int ClampPercentage(int percent)
@@ -70,7 +156,10 @@ namespace AsusFanControl.Core
             var fanCount = _fanCount;
             for(byte fanIndex = 0; fanIndex < fanCount; fanIndex++)
             {
+                // SetFanSpeed acquires the lock internally
                 SetFanSpeed(value, fanIndex);
+
+                // Keep delay to space out hardware commands if necessary
                 await Task.Delay(20);
             }
         }
@@ -86,25 +175,23 @@ namespace AsusFanControl.Core
         public int GetFanSpeed(byte fanIndex = 0)
         {
             if (_disposed) return 0;
-            AsusWinIO64.HealthyTable_SetFanIndex(fanIndex);
-            var fanSpeed = AsusWinIO64.HealthyTable_FanRPM();
-            return fanSpeed;
+
+            // Live read with lock
+            lock (_hardwareLock)
+            {
+                AsusWinIO64.HealthyTable_SetFanIndex(fanIndex);
+                var fanSpeed = AsusWinIO64.HealthyTable_FanRPM();
+                return fanSpeed;
+            }
         }
 
         public List<int> GetFanSpeeds()
         {
             if (_disposed) return new List<int>();
 
-            var fanSpeeds = new List<int>(_fanCount);
-
-            var fanCount = _fanCount;
-            for (byte fanIndex = 0; fanIndex < fanCount; fanIndex++)
-            {
-                var fanSpeed = GetFanSpeed(fanIndex);
-                fanSpeeds.Add(fanSpeed);
-            }
-
-            return fanSpeeds;
+            // Return a copy of the cached fan speeds
+            // This is non-blocking and instant (O(N) memory copy)
+            return new List<int>(_cachedFanSpeeds);
         }
 
         public int HealthyTable_FanCounts()
@@ -116,7 +203,10 @@ namespace AsusFanControl.Core
         public ulong Thermal_Read_Cpu_Temperature()
         {
             if (_disposed) return 0;
-            return AsusWinIO64.Thermal_Read_Cpu_Temperature();
+            lock (_hardwareLock)
+            {
+                return AsusWinIO64.Thermal_Read_Cpu_Temperature();
+            }
         }
 
         public Task ResetToDefaultAsync()
