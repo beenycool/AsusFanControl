@@ -24,19 +24,40 @@ namespace AsusFanControl.Core
 
         public int GetTargetSpeed(int currentTemp)
         {
-            if (Points == null || Points.Count == 0)
+            // Thread-safety: Create a local copy of the list.
+            var points = Points;
+            if (points == null || points.Count == 0)
                 return 0;
 
-            // Sort points by temperature
-            var sortedPoints = Points.OrderBy(p => p.Temperature).ToList();
+            // Use ToList() to create a snapshot. This is O(N) but safer than operating on the mutable list directly.
+            // It is still faster than OrderBy(...).ToList() which involves sorting overhead + allocations.
+            List<FanCurvePoint> sortedPoints = points.ToList();
+
+            // Check if already sorted (O(N))
+            bool isSorted = true;
+            for (int i = 0; i < sortedPoints.Count - 1; i++)
+            {
+                if (sortedPoints[i].Temperature > sortedPoints[i + 1].Temperature)
+                {
+                    isSorted = false;
+                    break;
+                }
+            }
+
+            if (!isSorted)
+            {
+                // Sort in-place (O(N log N)) only if needed.
+                // Since we operate on a local copy, this is thread-safe.
+                sortedPoints.Sort((a, b) => a.Temperature.CompareTo(b.Temperature));
+            }
 
             // If below first point
-            if (currentTemp <= sortedPoints.First().Temperature)
-                return sortedPoints.First().Speed;
+            if (currentTemp <= sortedPoints[0].Temperature)
+                return sortedPoints[0].Speed;
 
             // If above last point
-            if (currentTemp >= sortedPoints.Last().Temperature)
-                return sortedPoints.Last().Speed;
+            if (currentTemp >= sortedPoints[sortedPoints.Count - 1].Temperature)
+                return sortedPoints[sortedPoints.Count - 1].Speed;
 
             // Interpolate
             for (int i = 0; i < sortedPoints.Count - 1; i++)
@@ -57,7 +78,7 @@ namespace AsusFanControl.Core
                 }
             }
 
-            return sortedPoints.Last().Speed;
+            return sortedPoints[sortedPoints.Count - 1].Speed;
         }
 
         public override string ToString()
