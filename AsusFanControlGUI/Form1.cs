@@ -3,6 +3,7 @@ using System;
 using System.Windows.Forms;
 using System.IO;
 using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace AsusFanControlGUI
 {
@@ -16,6 +17,7 @@ namespace AsusFanControlGUI
         PerformanceCounter cpuCounter;
         Timer loggingTimer;
         StreamWriter loggingWriter;
+        bool isLoggingWriting = false;
 
         public Form1()
         {
@@ -355,7 +357,7 @@ namespace AsusFanControlGUI
                 {
                     try
                     {
-                        loggingWriter = new StreamWriter(dlg.FilePath, true);
+                        loggingWriter = new StreamWriter(new FileStream(dlg.FilePath, FileMode.Append, FileAccess.Write, FileShare.Read, 4096, true));
                         if (loggingWriter.BaseStream.Length == 0)
                         {
                             loggingWriter.WriteLine("Timestamp,CPU Temp (C),Fan Speed (RPM),CPU Load (%)");
@@ -401,8 +403,10 @@ namespace AsusFanControlGUI
                 toolStripMenuItemStartLogging.Text = "Start Logging";
         }
 
-        private void LoggingTimer_Tick(object sender, EventArgs e)
+        private async void LoggingTimer_Tick(object sender, EventArgs e)
         {
+            if (isLoggingWriting) return;
+            isLoggingWriting = true;
             try
             {
                 var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
@@ -417,12 +421,16 @@ namespace AsusFanControlGUI
 
                 if (loggingWriter != null)
                 {
-                     loggingWriter.WriteLine($"{timestamp},{cpuTemp},{fanSpeeds},{cpuLoad:F2}");
+                     await loggingWriter.WriteLineAsync($"{timestamp},{cpuTemp},{fanSpeeds},{cpuLoad:F2}");
                 }
             }
             catch
             {
                 // Ignore logging errors to prevent crash
+            }
+            finally
+            {
+                isLoggingWriting = false;
             }
         }
     }
