@@ -28,14 +28,13 @@ namespace AsusFanControlGUI
         public void SetCurve(FanCurve curve)
         {
             _points.Clear();
-            if (curve != null && curve.Points != null)
+            if (curve != null)
             {
                 foreach (var p in curve.Points)
                 {
                     _points.Add(new FanCurvePoint(p.Temperature, p.Speed));
                 }
             }
-            // Ensure sorted
             _points.Sort((a, b) => a.Temperature.CompareTo(b.Temperature));
 
             Invalidate();
@@ -44,13 +43,10 @@ namespace AsusFanControlGUI
         public FanCurve GetCurve()
         {
             var curve = new FanCurve();
-            // Deep copy
             foreach (var p in _points)
             {
-                curve.Points.Add(new FanCurvePoint(p.Temperature, p.Speed));
+                curve.AddPoint(new FanCurvePoint(p.Temperature, p.Speed));
             }
-            // Sort
-            curve.Points.Sort((a, b) => a.Temperature.CompareTo(b.Temperature));
             return curve;
         }
 
@@ -181,9 +177,11 @@ namespace AsusFanControlGUI
                     }
                     else if (e.Button == MouseButtons.Right)
                     {
-                        // Remove point
-                        _points.RemoveAt(i);
-                        Invalidate();
+                        if (_points.Count > 2)
+                        {
+                            _points.RemoveAt(i);
+                            Invalidate();
+                        }
                         return;
                     }
                 }

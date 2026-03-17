@@ -12,14 +12,10 @@ namespace AsusFanControlGUI
         public FanCurveEditor(FanCurve existingCurve)
         {
             InitializeComponent();
-            // Clone the curve so we don't modify the original until OK is pressed
             ResultCurve = new FanCurve();
             if (existingCurve != null)
             {
-                foreach(var p in existingCurve.Points)
-                {
-                    ResultCurve.Points.Add(new FanCurvePoint(p.Temperature, p.Speed));
-                }
+                ResultCurve.SetPoints(existingCurve.Points);
             }
         }
 
