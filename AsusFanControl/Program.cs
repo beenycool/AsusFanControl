@@ -5,14 +5,9 @@ namespace AsusFanControl
 {
     internal static class Program
     {
-        // Shared flag to control watchdog behavior
         static bool skipResetOnExit = false;
-        // Shared flag to indicate if manual disposal happened
         static bool isDisposed = false;
 
-        /// <summary>
-        /// The main entry point for the application.
-        /// </summary>
         [STAThread]
         static int Main(string[] args)
         {
@@ -28,44 +23,38 @@ namespace AsusFanControl
                 return 1;
             }
 
-            // Using Interface type for better abstraction
             IFanController asusControl = new AsusControl();
 
-            // Watchdog: Ensure fans are reset to default on exit or crash
-            // UNLESS the user explicitly requested to set the fan speed and exit.
             AppDomain.CurrentDomain.ProcessExit += (s, e) =>
             {
-                // Only reset if we haven't already disposed (which implies we finished main normally)
-                // and if we haven't set the flag to skip reset.
                 if (!isDisposed && !skipResetOnExit)
                 {
-                    try { asusControl.ResetToDefaultAsync().GetAwaiter().GetResult(); } catch {}
+                    try { asusControl.ResetToDefault(); }
+                    catch (Exception ex) { Console.Error.WriteLine($"[ProcessExit] Reset error: {ex.Message}"); }
                 }
             };
             AppDomain.CurrentDomain.UnhandledException += (s, e) =>
             {
                 if (!skipResetOnExit)
                 {
-                    try { asusControl.ResetToDefaultAsync().GetAwaiter().GetResult(); } catch {}
+                    try { asusControl.ResetToDefault(); }
+                    catch (Exception ex) { Console.Error.WriteLine($"[UnhandledException] Reset error: {ex.Message}"); }
                 }
-                // We might crash hard after this, but try to clean up.
-                try { asusControl.Dispose(); } catch {}
+                try { asusControl.Dispose(); }
+                catch (Exception ex) { Console.Error.WriteLine($"[UnhandledException] Dispose error: {ex.Message}"); }
             };
 
             try
             {
                 foreach (var arg in args)
                 {
-                    if (arg.StartsWith("--get-fan-speeds"))
+                    if (arg == "--get-fan-speeds")
                     {
                         var fanSpeeds = asusControl.GetFanSpeeds();
                         Console.WriteLine($"Current fan speeds: {string.Join(" ", fanSpeeds)} RPM");
                     }
-
-                    if (arg.StartsWith("--set-fan-speeds"))
+                    else if (arg.StartsWith("--set-fan-speeds="))
                     {
-                        skipResetOnExit = true; // User wants this speed to stick
-
                         var parts = arg.Split('=');
                         if (parts.Length < 2 || string.IsNullOrWhiteSpace(parts[1]))
                         {
@@ -76,8 +65,9 @@ namespace AsusFanControl
                         if (int.TryParse(parts[1], out int newSpeed))
                         {
                             asusControl.SetFanSpeeds(newSpeed);
+                            skipResetOnExit = true;
 
-                            if(newSpeed == 0)
+                            if (newSpeed == 0)
                                 Console.WriteLine("Test mode turned off");
                             else
                                 Console.WriteLine($"New fan speeds: {newSpeed}%");
@@ -87,8 +77,7 @@ namespace AsusFanControl
                             Console.WriteLine($"Error: Invalid number format for speed: {parts[1]}");
                         }
                     }
-
-                    if (arg.StartsWith("--get-fan-speed="))
+                    else if (arg.StartsWith("--get-fan-speed="))
                     {
                         var parts = arg.Split('=');
                         if (parts.Length < 2 || string.IsNullOrWhiteSpace(parts[1]))
@@ -118,17 +107,13 @@ namespace AsusFanControl
                             }
                         }
                     }
-
-                    if (arg.StartsWith("--get-fan-count"))
+                    else if (arg == "--get-fan-count")
                     {
                         var fanCount = asusControl.HealthyTable_FanCounts();
                         Console.WriteLine($"Fan count: {fanCount}");
                     }
-
-                    if (arg.StartsWith("--set-fan-speed="))
+                    else if (arg.StartsWith("--set-fan-speed="))
                     {
-                        skipResetOnExit = true; // User wants this speed to stick
-
                         var parts = arg.Split('=');
                         if (parts.Length < 2 || string.IsNullOrWhiteSpace(parts[1]))
                         {
@@ -137,6 +122,7 @@ namespace AsusFanControl
                         }
 
                         var fanSettings = parts[1].Split(',');
+                        bool anyValid = false;
                         foreach (var fanSetting in fanSettings)
                         {
                             var settingParts = fanSetting.Split(':');
@@ -147,6 +133,7 @@ namespace AsusFanControl
                                 if (fanId >= 0 && fanId <= 255)
                                 {
                                     asusControl.SetFanSpeed(fanSpeed, (byte)fanId);
+                                    anyValid = true;
 
                                     if (fanSpeed == 0)
                                         Console.WriteLine($"Test mode turned off for fan {fanId}");
@@ -163,24 +150,28 @@ namespace AsusFanControl
                                 Console.WriteLine($"Error: Invalid fan setting format: {fanSetting}");
                             }
                         }
+                        if (anyValid)
+                            skipResetOnExit = true;
                     }
-
-                    if (arg.StartsWith("--get-cpu-temp"))
+                    else if (arg == "--get-cpu-temp")
                     {
                         var cpuTemp = asusControl.Thermal_Read_Cpu_Temperature();
                         Console.WriteLine($"Current CPU temp: {cpuTemp}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Error: Unknown argument: {arg}");
                     }
                 }
             }
             finally
             {
-                // Normal exit cleanup
                 if (!skipResetOnExit)
                 {
-                    try { asusControl.ResetToDefaultAsync().GetAwaiter().GetResult(); } catch { }
+                    try { asusControl.ResetToDefault(); }
+                    catch (Exception ex) { Console.Error.WriteLine($"[Finally] Reset error: {ex.Message}"); }
                 }
 
-                // Mark as disposed so ProcessExit doesn't try to use it
                 isDisposed = true;
                 asusControl.Dispose();
             }
