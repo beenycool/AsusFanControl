@@ -303,6 +303,7 @@ namespace AsusFanControl.Core
         public void ResetToDefault()
         {
             if (_disposed) return;
+
             lock (_hardwareLock)
             {
                 if (_disposed || _disposing) return;
