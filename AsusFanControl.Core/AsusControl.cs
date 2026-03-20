@@ -223,7 +223,6 @@ namespace AsusFanControl.Core
                 if (_disposed) return Task.CompletedTask;
                 ResetToDefaultInternal();
             }
-
             return Task.CompletedTask;
         }
 
