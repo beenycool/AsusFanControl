@@ -12,6 +12,7 @@ namespace AsusFanControl.Core
         private const int MinFanSpeed = 0;
         private const int MaxFanSpeed = 100;
         private const int ResetCommandDelayMs = 10;
+        private const int MonitorIntervalMs = 1000;
 
         // Static lock to synchronize access to the shared hardware resource (driver/DLL state)
         private static readonly object _hardwareLock = new object();
@@ -57,15 +58,18 @@ namespace AsusFanControl.Core
         {
             if (!_disposed)
             {
+                // Always stop the background task to prevent leak on non-disposing cleanup
+                _cts?.Cancel();
                 if (disposing)
                 {
-                    // Stop the background task
-                    _cts?.Cancel();
                     try
                     {
                         _monitorTask?.Wait(2000); // Wait up to 2 seconds for clean exit
                     }
-                    catch { /* Ignore cancellation/task errors */ }
+                    catch (AggregateException ae)
+                    {
+                        ae.Handle(e => e is TaskCanceledException);
+                    }
                     _cts?.Dispose();
                 }
 
@@ -106,8 +110,7 @@ namespace AsusFanControl.Core
             {
                 try
                 {
-                    // Wait for the update interval (e.g., 1000ms)
-                    await Task.Delay(1000, token);
+                    await Task.Delay(MonitorIntervalMs, token);
 
                     if (_disposed) break;
 
@@ -117,9 +120,9 @@ namespace AsusFanControl.Core
                 {
                     break;
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Ignore errors in background loop to prevent crash
+                    System.Diagnostics.Debug.WriteLine($"[AsusControl] Monitor loop error: {ex.Message}");
                 }
             }
         }
