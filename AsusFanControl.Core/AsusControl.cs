@@ -142,7 +142,6 @@ namespace AsusFanControl.Core
             lock (_hardwareLock)
             {
                 if (_disposed) return;
-
                 AsusWinIO64.HealthyTable_SetFanIndex(fanIndex);
                 AsusWinIO64.HealthyTable_SetFanTestMode(value > 0 ? FanModeManual : FanModeDefault);
                 AsusWinIO64.HealthyTable_SetFanPwmDuty(value);
@@ -182,7 +181,6 @@ namespace AsusFanControl.Core
             lock (_hardwareLock)
             {
                 if (_disposed) return 0;
-
                 AsusWinIO64.HealthyTable_SetFanIndex(fanIndex);
                 return AsusWinIO64.HealthyTable_FanRPM();
             }
