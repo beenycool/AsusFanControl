@@ -21,7 +21,7 @@ namespace AsusFanControl.Core
     public class FanCurve
     {
         private readonly object _lock = new object();
-        private readonly List<FanCurvePoint> _points = new List<FanCurvePoint>();
+        private List<FanCurvePoint> _points = new List<FanCurvePoint>();
 
         public IReadOnlyList<FanCurvePoint> Points
         {
@@ -29,18 +29,22 @@ namespace AsusFanControl.Core
             {
                 lock (_lock)
                 {
-                    return _points.ToList();
+                    return _points.Select(ClonePoint).ToList();
                 }
             }
         }
 
         public int GetTargetSpeed(int currentTemp)
         {
-            var points = Points;
-            if (points.Count == 0)
-                return 0;
+            List<FanCurvePoint> sortedPoints;
+            lock (_lock)
+            {
+                if (_points.Count == 0)
+                    return 0;
 
-            var sortedPoints = points.ToList();
+                sortedPoints = _points.Select(ClonePoint).ToList();
+            }
+
             bool isSorted = true;
             for (int i = 0; i < sortedPoints.Count - 1; i++)
             {
@@ -83,31 +87,34 @@ namespace AsusFanControl.Core
 
         public override string ToString()
         {
-            return string.Join(",", Points.Select(p => $"{p.Temperature}:{p.Speed}"));
+            List<FanCurvePoint> snapshot;
+            lock (_lock)
+            {
+                snapshot = _points.Select(ClonePoint).ToList();
+            }
+
+            return string.Join(",", snapshot.Select(p => $"{p.Temperature}:{p.Speed}"));
         }
 
         public void SetPoints(IEnumerable<FanCurvePoint> newPoints)
         {
+            var clonedPoints = newPoints?
+                .Select(point => ClonePoint(ValidatePoint(point, nameof(newPoints))))
+                .ToList() ?? new List<FanCurvePoint>();
+
             lock (_lock)
             {
-                _points.Clear();
-                if (newPoints == null)
-                {
-                    return;
-                }
-
-                foreach (var point in newPoints)
-                {
-                    _points.Add(new FanCurvePoint(point.Temperature, point.Speed));
-                }
+                _points = clonedPoints;
             }
         }
 
         public void AddPoint(FanCurvePoint point)
         {
+            var clonedPoint = ClonePoint(ValidatePoint(point, nameof(point)));
+
             lock (_lock)
             {
-                _points.Add(new FanCurvePoint(point.Temperature, point.Speed));
+                _points.Add(clonedPoint);
             }
         }
 
@@ -124,11 +131,13 @@ namespace AsusFanControl.Core
 
         public void UpdatePointAt(int index, FanCurvePoint point)
         {
+            var clonedPoint = ClonePoint(ValidatePoint(point, nameof(point)));
+
             lock (_lock)
             {
                 if (index >= 0 && index < _points.Count)
                 {
-                    _points[index] = new FanCurvePoint(point.Temperature, point.Speed);
+                    _points[index] = clonedPoint;
                 }
             }
         }
@@ -171,6 +180,31 @@ namespace AsusFanControl.Core
 
             curve.SetPoints(points);
             return curve;
+        }
+
+        private static FanCurvePoint ValidatePoint(FanCurvePoint point, string paramName)
+        {
+            if (point == null)
+            {
+                throw new ArgumentNullException(paramName, "Points cannot contain null entries.");
+            }
+
+            if (point.Temperature < 0 || point.Temperature > 100)
+            {
+                throw new ArgumentOutOfRangeException(paramName, "Point temperature must be between 0 and 100.");
+            }
+
+            if (point.Speed < 0 || point.Speed > 100)
+            {
+                throw new ArgumentOutOfRangeException(paramName, "Point speed must be between 0 and 100.");
+            }
+
+            return point;
+        }
+
+        private static FanCurvePoint ClonePoint(FanCurvePoint point)
+        {
+            return new FanCurvePoint(point.Temperature, point.Speed);
         }
     }
 }

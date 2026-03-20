@@ -47,9 +47,12 @@ namespace AsusFanControlGUI
 
             if (currentFanCurve.PointCount == 0)
             {
-                 currentFanCurve.AddPoint(new FanCurvePoint(30, 0));
-                 currentFanCurve.AddPoint(new FanCurvePoint(60, 50));
-                 currentFanCurve.AddPoint(new FanCurvePoint(90, 100));
+                 currentFanCurve.SetPoints(new[]
+                 {
+                     new FanCurvePoint(30, 0),
+                     new FanCurvePoint(60, 50),
+                     new FanCurvePoint(90, 100)
+                 });
             }
 
             updateUIState();

@@ -43,10 +43,7 @@ namespace AsusFanControlGUI
         public FanCurve GetCurve()
         {
             var curve = new FanCurve();
-            foreach (var p in _points)
-            {
-                curve.AddPoint(new FanCurvePoint(p.Temperature, p.Speed));
-            }
+            curve.SetPoints(_points.OrderBy(p => p.Temperature).Select(p => new FanCurvePoint(p.Temperature, p.Speed)));
             return curve;
         }
 
