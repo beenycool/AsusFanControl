@@ -69,7 +69,7 @@ namespace AsusFanControl.Core
                 }
                 catch (AggregateException ae)
                 {
-                    ae.Handle(e => e is TaskCanceledException);
+                    ae.Handle(e => e is TaskCanceledException || e is OperationCanceledException);
                 }
 
                 _cts?.Dispose();
@@ -79,6 +79,8 @@ namespace AsusFanControl.Core
             lock (_hardwareLock)
             {
                 if (_disposed) return;
+
+                _disposed = true;
 
                 if (_instanceCount > 0)
                 {
@@ -93,11 +95,9 @@ namespace AsusFanControl.Core
                     }
                     catch (Exception ex)
                     {
-                        Debug.WriteLine($"[AsusControl] Error shutting down WinIo: {ex.Message}");
+                        Trace.TraceError($"[AsusControl] Error shutting down WinIo: {ex}");
                     }
                 }
-
-                _disposed = true;
             }
         }
 
@@ -111,6 +111,7 @@ namespace AsusFanControl.Core
                 lock (_hardwareLock)
                 {
                     if (_disposed) return;
+
                     AsusWinIO64.HealthyTable_SetFanIndex(fanIndex);
                     newSpeeds[fanIndex] = AsusWinIO64.HealthyTable_FanRPM();
                 }
@@ -131,13 +132,13 @@ namespace AsusFanControl.Core
 
                     UpdateFanSpeeds();
                 }
-                catch (TaskCanceledException)
+                catch (OperationCanceledException)
                 {
                     break;
                 }
                 catch (Exception ex)
                 {
-                    Debug.WriteLine($"[AsusControl] Monitor loop error: {ex.Message}");
+                    Trace.TraceError($"[AsusControl] Monitor loop error: {ex}");
                 }
             }
         }
@@ -147,6 +148,7 @@ namespace AsusFanControl.Core
             lock (_hardwareLock)
             {
                 if (_disposed) return;
+
                 AsusWinIO64.HealthyTable_SetFanIndex(fanIndex);
                 AsusWinIO64.HealthyTable_SetFanTestMode(value > 0 ? FanModeManual : FanModeDefault);
                 AsusWinIO64.HealthyTable_SetFanPwmDuty(value);
@@ -185,12 +187,10 @@ namespace AsusFanControl.Core
         {
             if (_disposed) return 0;
 
-            lock (_hardwareLock)
-            {
-                if (_disposed) return 0;
-                AsusWinIO64.HealthyTable_SetFanIndex(fanIndex);
-                return AsusWinIO64.HealthyTable_FanRPM();
-            }
+            var cachedFanSpeeds = _cachedFanSpeeds;
+            if (fanIndex >= cachedFanSpeeds.Length) return 0;
+
+            return cachedFanSpeeds[fanIndex];
         }
 
         public List<int> GetFanSpeeds()
@@ -218,11 +218,7 @@ namespace AsusFanControl.Core
         {
             if (_disposed) return Task.CompletedTask;
 
-            lock (_hardwareLock)
-            {
-                if (_disposed) return Task.CompletedTask;
-                ResetToDefaultInternal();
-            }
+            ResetToDefaultInternal();
             return Task.CompletedTask;
         }
 
@@ -230,28 +226,16 @@ namespace AsusFanControl.Core
         {
             if (_disposed) return;
 
-            lock (_hardwareLock)
-            {
-                if (_disposed) return;
-                ResetToDefaultInternal();
-            }
+            ResetToDefaultInternal();
         }
 
         private void ResetToDefaultInternal()
         {
             for (byte fanIndex = 0; fanIndex < _fanCount; fanIndex++)
             {
-                try
-                {
-                    AsusWinIO64.HealthyTable_SetFanIndex(fanIndex);
-                    AsusWinIO64.HealthyTable_SetFanTestMode(FanModeDefault);
-                    AsusWinIO64.HealthyTable_SetFanPwmDuty(0);
-                }
-                catch (Exception ex)
-                {
-                    Debug.WriteLine($"[AsusControl] Failed to reset fan {fanIndex}: {ex.Message}");
-                }
+                if (_disposed) return;
 
+                SetFanSpeed(0, fanIndex);
                 Thread.Sleep(ResetCommandDelayMs);
             }
         }
