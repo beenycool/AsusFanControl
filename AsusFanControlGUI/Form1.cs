@@ -71,16 +71,15 @@ namespace AsusFanControlGUI
                 // Custom cleanup
                 if (asusControl != null)
                 {
-                    // Ensure fans are reset if configured to do so
                     if (Properties.Settings.Default.turnOffControlOnExit)
                     {
                         try
                         {
                             asusControl.ResetToDefault();
                         }
-                        catch
+                        catch (Exception ex)
                         {
-                            // Swallow exceptions during disposal to prevent crashing
+                            Debug.WriteLine($"[Dispose] Reset error: {ex.Message}");
                         }
                     }
 

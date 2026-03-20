@@ -21,7 +21,7 @@ namespace AsusFanControl.Core
     public class FanCurve
     {
         private readonly object _lock = new object();
-        private List<FanCurvePoint> _points = new List<FanCurvePoint>();
+        private readonly List<FanCurvePoint> _points = new List<FanCurvePoint>();
 
         public IReadOnlyList<FanCurvePoint> Points
         {
@@ -36,15 +36,11 @@ namespace AsusFanControl.Core
 
         public int GetTargetSpeed(int currentTemp)
         {
-            List<FanCurvePoint> sortedPoints;
-            lock (_lock)
-            {
-                if (_points.Count == 0)
-                    return 0;
+            var points = Points;
+            if (points.Count == 0)
+                return 0;
 
-                sortedPoints = _points.ToList();
-            }
-
+            var sortedPoints = points.ToList();
             bool isSorted = true;
             for (int i = 0; i < sortedPoints.Count - 1; i++)
             {
@@ -61,7 +57,6 @@ namespace AsusFanControl.Core
             }
 
             int count = sortedPoints.Count;
-
             if (currentTemp <= sortedPoints[0].Temperature)
                 return sortedPoints[0].Speed;
 
@@ -79,23 +74,16 @@ namespace AsusFanControl.Core
                         return p2.Speed;
 
                     double tRatio = (double)(currentTemp - p1.Temperature) / (p2.Temperature - p1.Temperature);
-                    int speed = (int)(p1.Speed + (p2.Speed - p1.Speed) * tRatio);
-                    return speed;
+                    return (int)(p1.Speed + (p2.Speed - p1.Speed) * tRatio);
                 }
             }
 
-            throw new InvalidOperationException("Failed to find temperature range for interpolation. This should not happen.");
+            return sortedPoints[count - 1].Speed;
         }
 
         public override string ToString()
         {
-            List<FanCurvePoint> snapshot;
-            lock (_lock)
-            {
-                snapshot = _points.ToList();
-            }
-
-            return string.Join(",", snapshot.Select(p => $"{p.Temperature}:{p.Speed}"));
+            return string.Join(",", Points.Select(p => $"{p.Temperature}:{p.Speed}"));
         }
 
         public void SetPoints(IEnumerable<FanCurvePoint> newPoints)
@@ -103,12 +91,14 @@ namespace AsusFanControl.Core
             lock (_lock)
             {
                 _points.Clear();
-                if (newPoints != null)
+                if (newPoints == null)
                 {
-                    foreach (var point in newPoints)
-                    {
-                        _points.Add(new FanCurvePoint(point.Temperature, point.Speed));
-                    }
+                    return;
+                }
+
+                foreach (var point in newPoints)
+                {
+                    _points.Add(new FanCurvePoint(point.Temperature, point.Speed));
                 }
             }
         }
