@@ -20,15 +20,30 @@ namespace AsusFanControl.Core
 
     public class FanCurve
     {
-        public List<FanCurvePoint> Points { get; set; } = new List<FanCurvePoint>();
+        private readonly object _lock = new object();
+        private List<FanCurvePoint> _points = new List<FanCurvePoint>();
+
+        public IReadOnlyList<FanCurvePoint> Points
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _points.ToList();
+                }
+            }
+        }
 
         public int GetTargetSpeed(int currentTemp)
         {
-            var points = Points;
-            if (points == null || points.Count == 0)
-                return 0;
+            List<FanCurvePoint> sortedPoints;
+            lock (_lock)
+            {
+                if (_points.Count == 0)
+                    return 0;
 
-            List<FanCurvePoint> sortedPoints = points.ToList();
+                sortedPoints = _points.ToList();
+            }
 
             bool isSorted = true;
             for (int i = 0; i < sortedPoints.Count - 1; i++)
@@ -74,7 +89,77 @@ namespace AsusFanControl.Core
 
         public override string ToString()
         {
-            return string.Join(",", Points.Select(p => $"{p.Temperature}:{p.Speed}"));
+            List<FanCurvePoint> snapshot;
+            lock (_lock)
+            {
+                snapshot = _points.ToList();
+            }
+
+            return string.Join(",", snapshot.Select(p => $"{p.Temperature}:{p.Speed}"));
+        }
+
+        public void SetPoints(IEnumerable<FanCurvePoint> newPoints)
+        {
+            lock (_lock)
+            {
+                _points.Clear();
+                if (newPoints != null)
+                {
+                    foreach (var point in newPoints)
+                    {
+                        _points.Add(new FanCurvePoint(point.Temperature, point.Speed));
+                    }
+                }
+            }
+        }
+
+        public void AddPoint(FanCurvePoint point)
+        {
+            lock (_lock)
+            {
+                _points.Add(new FanCurvePoint(point.Temperature, point.Speed));
+            }
+        }
+
+        public void RemovePointAt(int index)
+        {
+            lock (_lock)
+            {
+                if (index >= 0 && index < _points.Count)
+                {
+                    _points.RemoveAt(index);
+                }
+            }
+        }
+
+        public void UpdatePointAt(int index, FanCurvePoint point)
+        {
+            lock (_lock)
+            {
+                if (index >= 0 && index < _points.Count)
+                {
+                    _points[index] = new FanCurvePoint(point.Temperature, point.Speed);
+                }
+            }
+        }
+
+        public int PointCount
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _points.Count;
+                }
+            }
+        }
+
+        public void ClearPoints()
+        {
+            lock (_lock)
+            {
+                _points.Clear();
+            }
         }
 
         public static FanCurve FromString(string data)
@@ -83,15 +168,18 @@ namespace AsusFanControl.Core
             if (string.IsNullOrWhiteSpace(data))
                 return curve;
 
+            var points = new List<FanCurvePoint>();
             var parts = data.Split(',');
             foreach (var part in parts)
             {
                 var kv = part.Split(':');
-                if (kv.Length == 2 && int.TryParse(kv[0], out int t) && int.TryParse(kv[1], out int s))
+                if (kv.Length == 2 && int.TryParse(kv[0], out int temperature) && int.TryParse(kv[1], out int speed))
                 {
-                    curve.Points.Add(new FanCurvePoint(t, s));
+                    points.Add(new FanCurvePoint(temperature, speed));
                 }
             }
+
+            curve.SetPoints(points);
             return curve;
         }
     }

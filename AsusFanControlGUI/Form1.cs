@@ -26,11 +26,14 @@ namespace AsusFanControlGUI
             {
                 cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
             }
-            catch { }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Form1] Failed to create PerformanceCounter: {ex.Message}");
+            }
             AppDomain.CurrentDomain.ProcessExit += new EventHandler(OnProcessExit);
             // Watchdog for crash
-            AppDomain.CurrentDomain.UnhandledException += (s, e) => { try { if (asusControl != null) asusControl.ResetToDefaultAsync().GetAwaiter().GetResult(); } catch { } };
-            Application.ThreadException += (s, e) => { try { if (asusControl != null) asusControl.ResetToDefaultAsync().GetAwaiter().GetResult(); } catch { } };
+            AppDomain.CurrentDomain.UnhandledException += (s, e) => { try { if (asusControl != null) asusControl.ResetToDefault(); } catch (Exception ex) { Debug.WriteLine($"[UnhandledException] Reset error: {ex.Message}"); } };
+            Application.ThreadException += (s, e) => { try { if (asusControl != null) asusControl.ResetToDefault(); } catch (Exception ex) { Debug.WriteLine($"[ThreadException] Reset error: {ex.Message}"); } };
 
             toolStripMenuItemTurnOffControlOnExit.Checked = Properties.Settings.Default.turnOffControlOnExit;
             toolStripMenuItemForbidUnsafeSettings.Checked = Properties.Settings.Default.forbidUnsafeSettings;
@@ -42,12 +45,11 @@ namespace AsusFanControlGUI
             numericUpdateInterval.Value = Properties.Settings.Default.updateInterval;
             currentFanCurve = FanCurve.FromString(Properties.Settings.Default.fanCurve);
 
-            if (currentFanCurve.Points.Count == 0)
+            if (currentFanCurve.PointCount == 0)
             {
-                 // Default curve
-                 currentFanCurve.Points.Add(new FanCurvePoint(30, 0));
-                 currentFanCurve.Points.Add(new FanCurvePoint(60, 50));
-                 currentFanCurve.Points.Add(new FanCurvePoint(90, 100));
+                 currentFanCurve.AddPoint(new FanCurvePoint(30, 0));
+                 currentFanCurve.AddPoint(new FanCurvePoint(60, 50));
+                 currentFanCurve.AddPoint(new FanCurvePoint(90, 100));
             }
 
             updateUIState();
@@ -74,7 +76,7 @@ namespace AsusFanControlGUI
                     {
                         try
                         {
-                            asusControl.ResetToDefaultAsync().GetAwaiter().GetResult();
+                            asusControl.ResetToDefault();
                         }
                         catch
                         {
@@ -86,7 +88,10 @@ namespace AsusFanControlGUI
                     {
                         asusControl.Dispose();
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine($"[Dispose] Dispose error: {ex.Message}");
+                    }
 
                     asusControl = null; // Prevent use-after-dispose
                 }
@@ -119,15 +124,13 @@ namespace AsusFanControlGUI
             {
                 try
                 {
-                    asusControl.ResetToDefaultAsync().GetAwaiter().GetResult();
+                    asusControl.ResetToDefault();
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // Ignore exceptions during shutdown
+                    Debug.WriteLine($"[OnProcessExit] Reset error: {ex.Message}");
                 }
             }
-            // Do not dispose here to avoid race with Form.Dispose(bool) or double-dispose.
-            // asusControl.Dispose() will be called when the Form is disposed.
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -181,6 +184,7 @@ namespace AsusFanControlGUI
             if (timer != null)
             {
                 timer.Stop();
+                timer.Dispose();
                 timer = null;
             }
 
@@ -416,7 +420,7 @@ namespace AsusFanControlGUI
                 float cpuLoad = 0;
                 if (cpuCounter != null)
                 {
-                    cpuLoad = cpuCounter.NextValue();
+                    cpuLoad = await Task.Run(() => cpuCounter.NextValue());
                 }
 
                 if (loggingWriter != null)
@@ -424,9 +428,9 @@ namespace AsusFanControlGUI
                      await loggingWriter.WriteLineAsync($"{timestamp},{cpuTemp},{fanSpeeds},{cpuLoad:F2}");
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Ignore logging errors to prevent crash
+                Debug.WriteLine($"[LoggingTimer] Error: {ex.Message}");
             }
             finally
             {

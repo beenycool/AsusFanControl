@@ -13,5 +13,6 @@ namespace AsusFanControl.Core
         int HealthyTable_FanCounts();
         ulong Thermal_Read_Cpu_Temperature();
         Task ResetToDefaultAsync();
+        void ResetToDefault();
     }
 }
