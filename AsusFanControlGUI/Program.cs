@@ -20,6 +20,23 @@ namespace AsusFanControlGUI
                 AllocConsole();
         }
 
+        static bool ExtractGuiFlag(ref string[] args)
+        {
+            bool found = false;
+            var kept = new System.Collections.Generic.List<string>(args.Length);
+            foreach (var arg in args)
+            {
+                if (arg == "--gui")
+                {
+                    found = true;
+                    continue;
+                }
+                kept.Add(arg);
+            }
+            args = kept.ToArray();
+            return found;
+        }
+
         /// <summary>
         /// GUI when launched with no arguments; CLI when any arguments are present (same binary as releases).
         /// </summary>
@@ -29,27 +46,25 @@ namespace AsusFanControlGUI
             if (args == null)
                 args = Array.Empty<string>();
 
-            if (args.Length == 0)
+            bool launchGui = ExtractGuiFlag(ref args);
+            args = CliProgram.ExtractDebugLogFlag(args, out string debugLogFile);
+
+            if (launchGui || args.Length == 0)
             {
-                Application.EnableVisualStyles();
-                Application.SetCompatibleTextRenderingDefault(false);
-                Application.Run(new Form1());
+                using (debugLogFile != null ? CliProgram.DebugLogSession.Create(debugLogFile) : null)
+                {
+                    Application.EnableVisualStyles();
+                    Application.SetCompatibleTextRenderingDefault(false);
+                    Application.Run(new Form1());
+                }
                 return 0;
             }
 
-            args = CliProgram.ExtractDebugLogFlag(args, out string debugLogFile);
             EnsureConsoleForCli();
             using (debugLogFile != null ? CliProgram.DebugLogSession.Create(debugLogFile) : null)
             {
                 if (debugLogFile != null)
                     Console.WriteLine("[debug-log] Writing diagnostics to: " + System.IO.Path.GetFullPath(debugLogFile));
-
-                if (args.Length < 1)
-                {
-                    EnsureConsoleForCli();
-                    CliProgram.PrintUsage();
-                    return 1;
-                }
 
                 EnsureConsoleForCli();
                 return CliProgram.Run(args);

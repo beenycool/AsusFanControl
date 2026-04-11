@@ -179,7 +179,8 @@ namespace AsusFanControlGUI
         internal static void PrintUsage()
         {
             Console.WriteLine("Usage: AsusFanControl <args>");
-            Console.WriteLine("\t--debug-log[=path]  (optional path; default: timestamped file in current directory)");
+            Console.WriteLine("\t--gui (launch GUI, can be combined with --debug-log)");
+            Console.WriteLine("\t--debug-log[=path] (optional path; default: timestamped file in current directory)");
             Console.WriteLine("\t--get-fan-speeds");
             Console.WriteLine("\t--set-fan-speeds=0-100 (percent value, 0 for turning off test mode)");
             Console.WriteLine("\t--get-fan-count");
