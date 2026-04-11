@@ -12,7 +12,7 @@ namespace AsusFanControl.Core
         {
             if (!proc.WaitForExit(timeoutMs))
             {
-                try { proc.Kill(true); } catch { }
+                try { proc.Kill(); } catch { }
                 try { proc.WaitForExit(1000); } catch { }
                 exitCode = -1;
                 return false;

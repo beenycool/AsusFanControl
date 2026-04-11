@@ -101,7 +101,7 @@ namespace AsusFanControl.Core
             if (string.IsNullOrEmpty(processName)) return null;
             var name = processName;
             if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
-                name = name[..^4];
+                name = name.Substring(0, name.Length - 4);
             return name.ToLowerInvariant();
         }
 
