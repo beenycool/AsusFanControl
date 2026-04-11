@@ -80,6 +80,7 @@ jobs:
         New-Item -ItemType Directory -Force -Path $stage | Out-Null
         Copy-Item "$out/AsusFanControl.exe" $stage
         Copy-Item "$out/AsusFanControl.exe.config" $stage
+        Copy-Item "$out/AsusWinIO64.dll" $stage
         Copy-Item "$out/PsExec.exe" $stage
         Copy-Item "$out/RunAsAdmin.bat" $stage
 
