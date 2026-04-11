@@ -41,6 +41,12 @@ namespace AsusFanControlGUI
                 _primary.WriteLine(value);
                 _secondary.WriteLine(value);
             }
+
+            public override void Flush()
+            {
+                _primary.Flush();
+                _secondary.Flush();
+            }
         }
 
         sealed class ForwardingTraceListener : TraceListener
@@ -94,6 +100,9 @@ namespace AsusFanControlGUI
 
             public static DebugLogSession Create(string path)
             {
+                if (string.IsNullOrWhiteSpace(path))
+                    path = DefaultDebugLogPath();
+
                 var dir = Path.GetDirectoryName(Path.GetFullPath(path));
                 if (!string.IsNullOrEmpty(dir))
                     Directory.CreateDirectory(dir);
@@ -183,6 +192,7 @@ namespace AsusFanControlGUI
         {
             bool skipResetOnExit = false;
             bool isDisposed = false;
+            bool hasError = false;
 
             IFanController asusControl = new AsusControl();
 
@@ -196,13 +206,16 @@ namespace AsusFanControlGUI
             };
             AppDomain.CurrentDomain.UnhandledException += (s, e) =>
             {
-                if (!skipResetOnExit)
+                if (!isDisposed && !skipResetOnExit)
                 {
                     try { asusControl.ResetToDefaultAsync().GetAwaiter().GetResult(); }
                     catch (Exception ex) { Console.Error.WriteLine("[UnhandledException] Reset error: " + ex.Message); }
                 }
-                try { asusControl.Dispose(); }
-                catch (Exception ex) { Console.Error.WriteLine("[UnhandledException] Dispose error: " + ex.Message); }
+                if (!isDisposed)
+                {
+                    try { asusControl.Dispose(); }
+                    catch (Exception ex) { Console.Error.WriteLine("[UnhandledException] Dispose error: " + ex.Message); }
+                }
             };
 
             try
@@ -220,11 +233,19 @@ namespace AsusFanControlGUI
                         if (parts.Length < 2 || string.IsNullOrWhiteSpace(parts[1]))
                         {
                             Console.WriteLine("Error: Invalid format for --set-fan-speeds. Usage: --set-fan-speeds=50");
+                            hasError = true;
                             continue;
                         }
 
                         if (int.TryParse(parts[1], out int newSpeed))
                         {
+                            if (newSpeed < 0 || newSpeed > 100)
+                            {
+                                Console.WriteLine("Error: Speed must be between 0 and 100");
+                                hasError = true;
+                                continue;
+                            }
+
                             asusControl.SetFanSpeeds(newSpeed);
                             skipResetOnExit = true;
 
@@ -293,6 +314,12 @@ namespace AsusFanControlGUI
                             {
                                 if (fanId >= 0 && fanId <= 255)
                                 {
+                                    if (fanSpeed < 0 || fanSpeed > 100)
+                                    {
+                                        Console.WriteLine("Error: Speed must be between 0 and 100");
+                                        continue;
+                                    }
+
                                     asusControl.SetFanSpeed(fanSpeed, (byte)fanId);
                                     anyValid = true;
 
@@ -322,6 +349,7 @@ namespace AsusFanControlGUI
                     else
                     {
                         Console.WriteLine("Error: Unknown argument: " + arg);
+                        hasError = true;
                     }
                 }
             }
@@ -337,7 +365,7 @@ namespace AsusFanControlGUI
                 asusControl.Dispose();
             }
 
-            return 0;
+            return hasError ? 1 : 0;
         }
     }
 }

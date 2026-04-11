@@ -38,6 +38,7 @@ namespace AsusFanControlGUI
             }
 
             args = CliProgram.ExtractDebugLogFlag(args, out string debugLogFile);
+            EnsureConsoleForCli();
             using (debugLogFile != null ? CliProgram.DebugLogSession.Create(debugLogFile) : null)
             {
                 if (debugLogFile != null)

@@ -54,34 +54,46 @@ namespace AsusFanControl.Core
 
         public void LoadProfiles(string serialized)
         {
-            _profiles.Clear();
-            _activeProfileName = null;
-            if (string.IsNullOrWhiteSpace(serialized)) return;
-
-            var entries = serialized.Split(new[] { "||" }, StringSplitOptions.RemoveEmptyEntries);
-            foreach (var entry in entries)
+            lock (_lock)
             {
-                var profile = FanProfile.FromString(entry);
-                if (profile != null)
-                    _profiles.Add(profile);
+                _profiles.Clear();
+                _activeProfileName = null;
+                if (string.IsNullOrWhiteSpace(serialized)) return;
+
+                var entries = serialized.Split(new[] { "||" }, StringSplitOptions.RemoveEmptyEntries);
+                foreach (var entry in entries)
+                {
+                    var profile = FanProfile.FromString(entry);
+                    if (profile != null)
+                        _profiles.Add(profile);
+                }
             }
         }
 
         public string SaveProfiles()
         {
-            return string.Join("||", _profiles.Select(p => p.ToString()));
+            lock (_lock)
+            {
+                return string.Join("||", _profiles.Select(p => p.ToString()));
+            }
         }
 
         public void AddProfile(FanProfile profile)
         {
             if (profile == null) throw new ArgumentNullException(nameof(profile));
-            _profiles.RemoveAll(p => string.Equals(p.Name, profile.Name, StringComparison.OrdinalIgnoreCase));
-            _profiles.Add(profile);
+            lock (_lock)
+            {
+                _profiles.RemoveAll(p => string.Equals(p.Name, profile.Name, StringComparison.OrdinalIgnoreCase));
+                _profiles.Add(profile);
+            }
         }
 
         public void RemoveProfile(string name)
         {
-            _profiles.RemoveAll(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
+            lock (_lock)
+            {
+                _profiles.RemoveAll(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
+            }
         }
 
         private static string NormalizeProcessName(string processName)
