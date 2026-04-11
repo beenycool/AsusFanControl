@@ -9,7 +9,7 @@ namespace AsusFanControlGUI
 {
     public partial class Form1 : Form
     {
-        AsusControl asusControl = new AsusControl();
+        AsusControl asusControl;
         int fanSpeed = 0;
         Timer timer;
         NotifyIcon trayIcon;
@@ -21,6 +21,61 @@ namespace AsusFanControlGUI
 
         public Form1()
         {
+            try
+            {
+                #region agent log
+                Console.Error.WriteLine("[startup] Form1 constructor entered");
+                Debug.WriteLine("[startup] Form1 constructor entered");
+                File.AppendAllText("/home/ubuntu/projects/AsusFanControl/.cursor/debug-4df631.log",
+                    "{\"sessionId\":\"4df631\",\"runId\":\"pre-fix\",\"hypothesisId\":\"H3\",\"location\":\"Form1.cs:24\",\"message\":\"Form1 constructor entered\",\"data\":{},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n");
+                #endregion
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                #region agent log
+                Console.Error.WriteLine("[startup] Before AsusControl construction");
+                Debug.WriteLine("[startup] Before AsusControl construction");
+                #endregion
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                asusControl = new AsusControl();
+            }
+            catch (Exception ex)
+            {
+                try
+                {
+                    #region agent log
+                    Console.Error.WriteLine("[startup] AsusControl construction failed: " + ex);
+                    Debug.WriteLine("[startup] AsusControl construction failed: " + ex);
+                    #endregion
+                }
+                catch
+                {
+                }
+
+                throw;
+            }
+
+            try
+            {
+                #region agent log
+                Console.Error.WriteLine("[startup] AsusControl constructed");
+                Debug.WriteLine("[startup] AsusControl constructed");
+                #endregion
+            }
+            catch
+            {
+            }
+
             InitializeComponent();
             try
             {
@@ -56,6 +111,19 @@ namespace AsusFanControlGUI
             }
 
             updateUIState();
+
+            try
+            {
+                #region agent log
+                Console.Error.WriteLine("[startup] Form1 constructor completed");
+                Debug.WriteLine("[startup] Form1 constructor completed");
+                File.AppendAllText("/home/ubuntu/projects/AsusFanControl/.cursor/debug-4df631.log",
+                    "{\"sessionId\":\"4df631\",\"runId\":\"pre-fix\",\"hypothesisId\":\"H3\",\"location\":\"Form1.cs:70\",\"message\":\"Form1 constructor completed\",\"data\":{\"autoMode\":" + (checkBoxAuto.Checked ? "true" : "false") + ",\"updateInterval\":" + numericUpdateInterval.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) + "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n");
+                #endregion
+            }
+            catch
+            {
+            }
         }
 
         /// <summary>

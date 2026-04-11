@@ -29,6 +29,17 @@ namespace AsusFanControl.Core
 
         public AsusControl()
         {
+            try
+            {
+                #region agent log
+                System.IO.File.AppendAllText("/home/ubuntu/projects/AsusFanControl/.cursor/debug-4df631.log",
+                    "{\"sessionId\":\"4df631\",\"runId\":\"pre-fix\",\"hypothesisId\":\"H5\",\"location\":\"AsusControl.cs:33\",\"message\":\"AsusControl constructor entered\",\"data\":{},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n");
+                #endregion
+            }
+            catch
+            {
+            }
+
             lock (_hardwareLock)
             {
                 while (_shutdownInProgress)
@@ -48,8 +59,21 @@ namespace AsusFanControl.Core
                     _fanCount = AsusWinIO64.HealthyTable_FanCounts();
                     _instanceCount++;
                 }
-                catch
+                catch (Exception ex)
                 {
+                    try
+                    {
+                        #region agent log
+                        Console.Error.WriteLine("[startup] AsusControl initialization failed: " + ex);
+                        Debug.WriteLine("[startup] AsusControl initialization failed: " + ex);
+                        System.IO.File.AppendAllText("/home/ubuntu/projects/AsusFanControl/.cursor/debug-4df631.log",
+                            "{\"sessionId\":\"4df631\",\"runId\":\"pre-fix\",\"hypothesisId\":\"H5\",\"location\":\"AsusControl.cs:63\",\"message\":\"AsusControl initialization failed\",\"data\":{},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n");
+                        #endregion
+                    }
+                    catch
+                    {
+                    }
+
                     if (initializedHere)
                     {
                         try
@@ -71,6 +95,19 @@ namespace AsusFanControl.Core
 
             UpdateFanSpeeds();
             _monitorTask = Task.Run(() => MonitorLoop(_cts.Token));
+
+            try
+            {
+                #region agent log
+                Console.Error.WriteLine("[startup] AsusControl constructor completed, fanCount=" + _fanCount);
+                Debug.WriteLine("[startup] AsusControl constructor completed, fanCount=" + _fanCount);
+                System.IO.File.AppendAllText("/home/ubuntu/projects/AsusFanControl/.cursor/debug-4df631.log",
+                    "{\"sessionId\":\"4df631\",\"runId\":\"pre-fix\",\"hypothesisId\":\"H5\",\"location\":\"AsusControl.cs:88\",\"message\":\"AsusControl constructor completed\",\"data\":{\"fanCount\":" + _fanCount + "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n");
+                #endregion
+            }
+            catch
+            {
+            }
         }
 
         ~AsusControl()
