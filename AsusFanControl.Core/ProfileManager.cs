@@ -22,10 +22,9 @@ namespace AsusFanControl.Core
 
         public override string ToString()
         {
-            // Format: name|curveData|proc1;proc2;proc3
             var curveStr = Curve?.ToString() ?? "";
-            var procStr = string.Join(";", TriggerProcesses);
-            return $"{Name}|{curveStr}|{procStr}";
+            var procStr = string.Join(";", TriggerProcesses.Select(p => Uri.EscapeDataString(p)));
+            return $"{Uri.EscapeDataString(Name)}|{curveStr}|{procStr}";
         }
 
         public static FanProfile FromString(string data)
@@ -36,9 +35,10 @@ namespace AsusFanControl.Core
 
             return new FanProfile
             {
-                Name = parts[0],
+                Name = Uri.UnescapeDataString(parts[0]),
                 Curve = FanCurve.FromString(parts[1]),
-                TriggerProcesses = parts[2].Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).ToList()
+                TriggerProcesses = parts[2].Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(Uri.UnescapeDataString).ToList()
             };
         }
     }
@@ -46,6 +46,7 @@ namespace AsusFanControl.Core
     public class ProfileManager
     {
         private readonly List<FanProfile> _profiles = new List<FanProfile>();
+        private readonly object _lock = new object();
         private string _activeProfileName;
 
         public IReadOnlyList<FanProfile> Profiles => _profiles;
@@ -54,6 +55,7 @@ namespace AsusFanControl.Core
         public void LoadProfiles(string serialized)
         {
             _profiles.Clear();
+            _activeProfileName = null;
             if (string.IsNullOrWhiteSpace(serialized)) return;
 
             var entries = serialized.Split(new[] { "||" }, StringSplitOptions.RemoveEmptyEntries);
@@ -72,13 +74,23 @@ namespace AsusFanControl.Core
 
         public void AddProfile(FanProfile profile)
         {
-            _profiles.RemoveAll(p => p.Name == profile.Name);
+            if (profile == null) throw new ArgumentNullException(nameof(profile));
+            _profiles.RemoveAll(p => string.Equals(p.Name, profile.Name, StringComparison.OrdinalIgnoreCase));
             _profiles.Add(profile);
         }
 
         public void RemoveProfile(string name)
         {
-            _profiles.RemoveAll(p => p.Name == name);
+            _profiles.RemoveAll(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static string NormalizeProcessName(string processName)
+        {
+            if (string.IsNullOrEmpty(processName)) return null;
+            var name = processName;
+            if (name.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                name = name[..^4];
+            return name.ToLowerInvariant();
         }
 
         public FanProfile CheckActiveProfile(FanCurve defaultCurve)
@@ -88,7 +100,7 @@ namespace AsusFanControl.Core
                 var runningProcesses = new HashSet<string>(
                     Process.GetProcesses().Select(p =>
                     {
-                        try { return p.ProcessName.ToLowerInvariant(); }
+                        try { return NormalizeProcessName(p.ProcessName); }
                         catch { return null; }
                     }).Where(n => n != null),
                     StringComparer.OrdinalIgnoreCase
@@ -96,8 +108,12 @@ namespace AsusFanControl.Core
 
                 foreach (var profile in _profiles)
                 {
+                    if (profile.TriggerProcesses == null) continue;
                     if (profile.TriggerProcesses.Any(tp =>
-                        runningProcesses.Contains(tp.Replace(".exe", "").ToLowerInvariant())))
+                    {
+                        var normalized = NormalizeProcessName(tp);
+                        return normalized != null && runningProcesses.Contains(normalized);
+                    }))
                     {
                         _activeProfileName = profile.Name;
                         return profile;

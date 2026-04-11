@@ -1,11 +1,25 @@
 using System;
 using System.Diagnostics;
+using System.IO;
 
 namespace AsusFanControl.Core
 {
     public static class TaskSchedulerHelper
     {
         private const string TaskName = "AsusFanControl_AutoStart";
+
+        private static bool WaitForExitSafely(Process proc, int timeoutMs, out int exitCode)
+        {
+            if (!proc.WaitForExit(timeoutMs))
+            {
+                try { proc.Kill(true); } catch { }
+                try { proc.WaitForExit(1000); } catch { }
+                exitCode = -1;
+                return false;
+            }
+            exitCode = proc.ExitCode;
+            return true;
+        }
 
         public static bool IsTaskRegistered()
         {
@@ -22,8 +36,9 @@ namespace AsusFanControl.Core
                 };
                 using (var proc = Process.Start(psi))
                 {
-                    proc.WaitForExit(5000);
-                    return proc.ExitCode == 0;
+                    if (!WaitForExitSafely(proc, 5000, out int exitCode))
+                        return false;
+                    return exitCode == 0;
                 }
             }
             catch
@@ -36,10 +51,18 @@ namespace AsusFanControl.Core
         {
             try
             {
+                var safePath = Path.GetFullPath(exePath);
+                if (!File.Exists(safePath))
+                    return false;
+
+                var args = exePath.IndexOfAny(new[] { '"', '\n', '\r', ';', '&', '|', '>', '<' }) >= 0;
+                if (args)
+                    return false;
+
                 var psi = new ProcessStartInfo
                 {
                     FileName = "schtasks.exe",
-                    Arguments = $"/Create /TN \"{TaskName}\" /TR \"\\\"{exePath}\\\"\" /SC ONLOGON /RL HIGHEST /F",
+                    Arguments = $"/Create /TN \"{TaskName}\" /TR \"\\\"{safePath}\\\"\" /SC ONLOGON /RL HIGHEST /F",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -47,8 +70,9 @@ namespace AsusFanControl.Core
                 };
                 using (var proc = Process.Start(psi))
                 {
-                    proc.WaitForExit(10000);
-                    return proc.ExitCode == 0;
+                    if (!WaitForExitSafely(proc, 10000, out int exitCode))
+                        return false;
+                    return exitCode == 0;
                 }
             }
             catch
@@ -72,8 +96,9 @@ namespace AsusFanControl.Core
                 };
                 using (var proc = Process.Start(psi))
                 {
-                    proc.WaitForExit(10000);
-                    return proc.ExitCode == 0;
+                    if (!WaitForExitSafely(proc, 10000, out int exitCode))
+                        return false;
+                    return exitCode == 0;
                 }
             }
             catch

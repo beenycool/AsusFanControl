@@ -18,6 +18,7 @@ namespace AsusFanControlGUI
 
         public ProfileEditorDialog(ProfileManager profileManager, FanCurve defaultCurve)
         {
+            if (profileManager == null) throw new ArgumentNullException(nameof(profileManager));
             _profileManager = profileManager;
             _defaultCurve = defaultCurve;
             InitializeComponents();
@@ -193,9 +194,11 @@ namespace AsusFanControlGUI
             };
             buttonEditCurve.Click += (s, e) =>
             {
-                var editor = new FanCurveEditor(_curve);
-                if (editor.ShowDialog() == DialogResult.OK)
-                    _curve = editor.ResultCurve;
+                using (var editor = new FanCurveEditor(_curve))
+                {
+                    if (editor.ShowDialog() == DialogResult.OK)
+                        _curve = editor.ResultCurve;
+                }
             };
             this.Controls.Add(buttonEditCurve);
 
