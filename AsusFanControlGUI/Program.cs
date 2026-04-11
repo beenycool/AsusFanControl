@@ -49,16 +49,23 @@ namespace AsusFanControlGUI
             bool launchGui = ExtractGuiFlag(ref args);
             args = CliProgram.ExtractDebugLogFlag(args, out string debugLogFile);
 
-            if (launchGui || args.Length == 0)
+        if (launchGui || args.Length == 0)
+        {
+            CliProgram.DebugLogSession debugSession = null;
+            try
             {
-                using (debugLogFile != null ? CliProgram.DebugLogSession.Create(debugLogFile) : null)
-                {
-                    Application.EnableVisualStyles();
-                    Application.SetCompatibleTextRenderingDefault(false);
-                    Application.Run(new Form1());
-                }
-                return 0;
+                if (debugLogFile != null)
+                    debugSession = CliProgram.DebugLogSession.Create(debugLogFile);
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
+                Application.Run(new Form1());
             }
+            finally
+            {
+                debugSession?.Dispose();
+            }
+            return 0;
+        }
 
             EnsureConsoleForCli();
             using (debugLogFile != null ? CliProgram.DebugLogSession.Create(debugLogFile) : null)
