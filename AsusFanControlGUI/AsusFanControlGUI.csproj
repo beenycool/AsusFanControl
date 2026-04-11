@@ -91,6 +91,10 @@
       <DependentUpon>LoggingDialog.cs</DependentUpon>
     </Compile>
     <Compile Include="CliProgram.cs" />
+    <Compile Include="DarkMenuRenderer.cs" />
+    <Compile Include="ProfileEditorDialog.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="Form1.resx">
