@@ -5,8 +5,10 @@ Go to [releases](../../releases)
 
 ### Run
 
+The same `AsusFanControl.exe` starts the **GUI** when you double‑click it or run it with **no arguments**, and runs **command-line mode** when you pass any CLI flag (for example `AsusFanControl.exe --get-fan-speeds`).
+
 <details>
-    <summary>Command line: `AsusFanControl.exe`</summary>
+    <summary>Command line (same executable)</summary>
     
     AsusFanControl.exe <args>
         --get-fan-speeds
@@ -17,7 +19,7 @@ Go to [releases](../../releases)
         --get-cpu-temp
 </details>
 
-GUI: `AsusFanControlGUI.exe`  
+GUI: run `AsusFanControl.exe` with no arguments (or use `RunAsAdmin.bat` where provided).  
 
 ![AsusFanControlGUI](https://github.com/Karmel0x/AsusFanControl/assets/25367564/fe197ad0-7079-4d51-ae78-177cb6369e96)
 
@@ -29,7 +31,7 @@ This program should work on any laptop with x64 windows where [Fan Diagnosis](ht
 
 [ASUS System Control Interface](https://www.asus.com/support/faq/1047338/) is necessary for this software to work - `ASUS System Analysis` service [must be running](../../issues/16). It's automatically installed with `MyASUS` app.
 
-Included `AsusWinIO64.dll` is licenced to `(c) ASUSTek COMPUTER INC.` which can be found in `C:\Windows\System32\DriverStore\FileRepository\asussci2.inf_amd64_-\ASUSSystemAnalysis\` if you have MyASUS installed.
+The release build embeds the same `AsusWinIO64.dll` (licenced to `(c) ASUSTek COMPUTER INC.`) that you can find in `C:\Windows\System32\DriverStore\FileRepository\asussci2.inf_amd64_-\ASUSSystemAnalysis\` if you have MyASUS installed; the DLL also remains in the repository under `AsusFanControl.Core` for the build.
 
 [Works on](../../issues/13): 
 - ASUS: VivoBook, ZenBook, TUF Gaming, ROG Strix, ROG Zephyrus, ROG Flow
