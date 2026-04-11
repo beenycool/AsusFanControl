@@ -12,7 +12,6 @@ namespace AsusFanControl.Core
         private const char FanModeDefault = (char)0x00;
         private const int MinFanSpeed = 0;
         private const int MaxFanSpeed = 100;
-        private const int MaxSupportedFanCount = 16;
         private const int ResetCommandDelayMs = 10;
         private const int MonitorIntervalMs = 1000;
 
@@ -72,14 +71,6 @@ namespace AsusFanControl.Core
                     {
                     }
 
-                    if (_fanCount <= 0 || _fanCount > MaxSupportedFanCount)
-                    {
-                        throw new InvalidOperationException(
-                            "ASUS fan interface returned an invalid fan count (" + _fanCount + "). " +
-                            "This usually means the ASUS System Control Interface/MyASUS components are missing, " +
-                            "the model is unsupported, or the driver did not initialize correctly.");
-                    }
-
                     _instanceCount++;
                 }
                 catch (Exception ex)
@@ -103,9 +94,9 @@ namespace AsusFanControl.Core
                         {
                             AsusWinIO64.ShutdownWinIo();
                         }
-                        catch (Exception rollbackEx)
+                        catch (Exception ex)
                         {
-                            Debug.WriteLine($"[AsusControl] Error rolling back WinIo initialization: {rollbackEx.Message}");
+                            Debug.WriteLine($"[AsusControl] Error rolling back WinIo initialization: {ex.Message}");
                         }
                     }
 

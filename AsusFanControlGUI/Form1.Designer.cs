@@ -1,4 +1,4 @@
-﻿namespace AsusFanControlGUI
+namespace AsusFanControlGUI
 {
     partial class Form1
     {
@@ -32,6 +32,7 @@
             this.toolStripMenuItemForbidUnsafeSettings = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItemMinimizeToTrayOnClose = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItemAutoRefreshStats = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripMenuItemStartLogging = new System.Windows.Forms.ToolStripMenuItem();
             this.toolStripMenuItemCheckForUpdates = new System.Windows.Forms.ToolStripMenuItem();
             this.checkBoxAuto = new System.Windows.Forms.CheckBox();
             this.buttonEditCurve = new System.Windows.Forms.Button();

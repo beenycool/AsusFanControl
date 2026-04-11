@@ -140,13 +140,7 @@ namespace AsusFanControlGUI
                 {
                 }
 
-                MessageBox.Show(
-                    ex.Message,
-                    "AsusFanControl startup failed",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
-
-                return 1;
+                throw;
             }
             finally
             {
