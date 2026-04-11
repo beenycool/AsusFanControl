@@ -78,6 +78,11 @@ jobs:
 
         $stage = "artifacts/AsusFanControl"
         New-Item -ItemType Directory -Force -Path $stage | Out-Null
+        
+        # Debug: list all files in output directory
+        Write-Host "Files in output directory:"
+        Get-ChildItem $out -Recurse | ForEach-Object { Write-Host $_.FullName }
+        
         Copy-Item "$out/AsusFanControl.exe" $stage
         Copy-Item "$out/AsusFanControl.exe.config" $stage
         Copy-Item "$out/AsusWinIO64.dll" $stage
