@@ -1,9 +1,9 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.6.33801.468
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AsusFanControl", "AsusFanControl\AsusFanControl.csproj", "{DF94635E-4107-4EE9-8675-7137E750BC86}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AsusFanControl.Core", "AsusFanControl.Core\AsusFanControl.Core.csproj", "{5DE454F6-67E4-42EB-A427-04022A4E0CA2}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AsusFanControlGUI", "AsusFanControlGUI\AsusFanControlGUI.csproj", "{42CC78B6-E3BB-4092-A423-A4EC20FB3C11}"
 EndProject
@@ -13,10 +13,10 @@ Global
 		Release|x64 = Release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{DF94635E-4107-4EE9-8675-7137E750BC86}.Debug|x64.ActiveCfg = Debug|x64
-		{DF94635E-4107-4EE9-8675-7137E750BC86}.Debug|x64.Build.0 = Debug|x64
-		{DF94635E-4107-4EE9-8675-7137E750BC86}.Release|x64.ActiveCfg = Release|x64
-		{DF94635E-4107-4EE9-8675-7137E750BC86}.Release|x64.Build.0 = Release|x64
+		{5DE454F6-67E4-42EB-A427-04022A4E0CA2}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{5DE454F6-67E4-42EB-A427-04022A4E0CA2}.Debug|x64.Build.0 = Debug|Any CPU
+		{5DE454F6-67E4-42EB-A427-04022A4E0CA2}.Release|x64.ActiveCfg = Release|Any CPU
+		{5DE454F6-67E4-42EB-A427-04022A4E0CA2}.Release|x64.Build.0 = Release|Any CPU
 		{42CC78B6-E3BB-4092-A423-A4EC20FB3C11}.Debug|x64.ActiveCfg = Debug|x64
 		{42CC78B6-E3BB-4092-A423-A4EC20FB3C11}.Debug|x64.Build.0 = Debug|x64
 		{42CC78B6-E3BB-4092-A423-A4EC20FB3C11}.Release|x64.ActiveCfg = Release|x64

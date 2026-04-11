@@ -56,12 +56,13 @@ jobs:
     - name: Build the application
       run: msbuild $env:Solution_Name /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }}
 
-    # Download PsExec and Create Batch Script
+    # Download PsExec, create launcher batch, and stage only release files (no PDB/obj noise)
     - name: Prepare Artifacts
       run: |
+        $out = "bin/${{ matrix.platform }}/${{ matrix.configuration }}"
         Invoke-WebRequest -Uri "https://download.sysinternals.com/files/PSTools.zip" -OutFile "PSTools.zip"
         Expand-Archive -Path "PSTools.zip" -DestinationPath "PSTools"
-        Copy-Item -Path "PSTools/PsExec.exe" -Destination "bin/${{ matrix.platform }}/${{ matrix.configuration }}/"
+        Copy-Item -Path "PSTools/PsExec.exe" -Destination $out
 
         $batContent = @"
         net session >nul 2>&1
@@ -71,13 +72,20 @@ jobs:
             exit /b
         )
 
-        "%~dp0PsExec" -i -s -d "%~dp0AsusFanControlGUI.exe"
+        "%~dp0PsExec" -i -s -d "%~dp0AsusFanControl.exe"
         "@
-        $batContent | Out-File -FilePath "bin/${{ matrix.platform }}/${{ matrix.configuration }}/RunAsAdmin.bat" -Encoding ASCII
+        $batContent | Out-File -FilePath "$out/RunAsAdmin.bat" -Encoding ASCII
+
+        $stage = "artifacts/AsusFanControl"
+        New-Item -ItemType Directory -Force -Path $stage | Out-Null
+        Copy-Item "$out/AsusFanControl.exe" $stage
+        Copy-Item "$out/AsusFanControl.exe.config" $stage
+        Copy-Item "$out/PsExec.exe" $stage
+        Copy-Item "$out/RunAsAdmin.bat" $stage
 
     # Upload the build artifact
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: AsusFanControlGUI
-        path: bin/${{ matrix.platform }}/${{ matrix.configuration }}
+        name: AsusFanControl
+        path: artifacts/AsusFanControl
