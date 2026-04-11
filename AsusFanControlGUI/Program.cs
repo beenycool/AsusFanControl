@@ -1,7 +1,7 @@
 using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
-using System.Diagnostics; // required for Debug.WriteLine calls
 
 namespace AsusFanControlGUI
 {
@@ -139,7 +139,14 @@ namespace AsusFanControlGUI
                 catch
                 {
                 }
-                throw;
+
+                MessageBox.Show(
+                    ex.Message,
+                    "AsusFanControl startup failed",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+
+                return 1;
             }
             finally
             {

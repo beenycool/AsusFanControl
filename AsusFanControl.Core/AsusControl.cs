@@ -12,6 +12,7 @@ namespace AsusFanControl.Core
         private const char FanModeDefault = (char)0x00;
         private const int MinFanSpeed = 0;
         private const int MaxFanSpeed = 100;
+        private const int MaxSupportedFanCount = 16;
         private const int ResetCommandDelayMs = 10;
         private const int MonitorIntervalMs = 1000;
 
@@ -57,6 +58,28 @@ namespace AsusFanControl.Core
                     }
 
                     _fanCount = AsusWinIO64.HealthyTable_FanCounts();
+
+                    try
+                    {
+                        #region agent log
+                        Console.Error.WriteLine("[startup] HealthyTable_FanCounts returned " + _fanCount);
+                        Debug.WriteLine("[startup] HealthyTable_FanCounts returned " + _fanCount);
+                        System.IO.File.AppendAllText("/home/ubuntu/projects/AsusFanControl/.cursor/debug-4df631.log",
+                            "{\"sessionId\":\"4df631\",\"runId\":\"post-fix\",\"hypothesisId\":\"H5\",\"location\":\"AsusControl.cs:60\",\"message\":\"HealthyTable_FanCounts returned\",\"data\":{\"fanCount\":" + _fanCount + "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n");
+                        #endregion
+                    }
+                    catch
+                    {
+                    }
+
+                    if (_fanCount <= 0 || _fanCount > MaxSupportedFanCount)
+                    {
+                        throw new InvalidOperationException(
+                            "ASUS fan interface returned an invalid fan count (" + _fanCount + "). " +
+                            "This usually means the ASUS System Control Interface/MyASUS components are missing, " +
+                            "the model is unsupported, or the driver did not initialize correctly.");
+                    }
+
                     _instanceCount++;
                 }
                 catch (Exception ex)
@@ -67,7 +90,7 @@ namespace AsusFanControl.Core
                         Console.Error.WriteLine("[startup] AsusControl initialization failed: " + ex);
                         Debug.WriteLine("[startup] AsusControl initialization failed: " + ex);
                         System.IO.File.AppendAllText("/home/ubuntu/projects/AsusFanControl/.cursor/debug-4df631.log",
-                            "{\"sessionId\":\"4df631\",\"runId\":\"pre-fix\",\"hypothesisId\":\"H5\",\"location\":\"AsusControl.cs:63\",\"message\":\"AsusControl initialization failed\",\"data\":{},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n");
+                            "{\"sessionId\":\"4df631\",\"runId\":\"post-fix\",\"hypothesisId\":\"H5\",\"location\":\"AsusControl.cs:63\",\"message\":\"AsusControl initialization failed\",\"data\":{\"type\":\"" + ex.GetType().FullName.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\",\"message\":\"" + (ex.Message ?? string.Empty).Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n");
                         #endregion
                     }
                     catch
@@ -80,10 +103,10 @@ namespace AsusFanControl.Core
                         {
                             AsusWinIO64.ShutdownWinIo();
                         }
-		catch (Exception rollbackEx)
-		{
-			Debug.WriteLine($"[AsusControl] Error rolling back WinIo initialization: {rollbackEx.Message}");
-		}
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"[AsusControl] Error rolling back WinIo initialization: {ex.Message}");
+                        }
                     }
 
                     throw;
