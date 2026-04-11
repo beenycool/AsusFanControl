@@ -94,9 +94,9 @@ namespace AsusFanControl.Core
                         {
                             AsusWinIO64.ShutdownWinIo();
                         }
-                        catch (Exception ex)
+                        catch (Exception shutdownEx)
                         {
-                            Debug.WriteLine($"[AsusControl] Error rolling back WinIo initialization: {ex.Message}");
+                            Debug.WriteLine($"[AsusControl] Error rolling back WinIo initialization: {shutdownEx.Message}");
                         }
                     }
 
