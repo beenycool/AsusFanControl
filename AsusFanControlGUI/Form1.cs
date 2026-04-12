@@ -9,43 +9,22 @@ namespace AsusFanControlGUI
 {
     public partial class Form1 : Form
     {
-        AsusControl asusControl;
+        private IFanController _fanController;
         int fanSpeed = 0;
         Timer timer;
         NotifyIcon trayIcon;
         FanCurve currentFanCurve;
         PerformanceCounter cpuCounter;
-        Timer loggingTimer;
-        StreamWriter loggingWriter;
-        bool isLoggingWriting = false;
+        CsvLogger _csvLogger;
         System.Threading.CancellationTokenSource _backgroundCts;
         ProfileManager _profileManager;
         string _activeProfileName;
         System.Threading.Tasks.Task _profileMonitorTask;
-        System.Threading.CancellationTokenSource _autoCts;
-        System.Threading.Tasks.Task _autoControlTask;
+        AutoFanController _autoFanController;
 
-        public Form1()
+        public Form1(IFanController fanController)
         {
-            // constructor entered
-
-            Console.Error.WriteLine("[startup] Before AsusControl construction");
-            Debug.WriteLine("[startup] Before AsusControl construction");
-
-            try
-            {
-                asusControl = new AsusControl();
-            }
-            catch (Exception ex)
-            {
-                Console.Error.WriteLine("[startup] AsusControl construction failed: " + ex);
-                Debug.WriteLine("[startup] AsusControl construction failed: " + ex);
-
-                throw;
-            }
-
-            Console.Error.WriteLine("[startup] AsusControl constructed");
-            Debug.WriteLine("[startup] AsusControl constructed");
+            _fanController = fanController ?? throw new ArgumentNullException(nameof(fanController));
 
             InitializeComponent();
             // Apply dark menu renderer
@@ -67,19 +46,10 @@ namespace AsusFanControlGUI
             });
             AppDomain.CurrentDomain.ProcessExit += new EventHandler(OnProcessExit);
             // Watchdog for crash
-            AppDomain.CurrentDomain.UnhandledException += (s, e) => { try { if (asusControl != null) asusControl.ResetToDefault(); } catch (Exception ex) { Debug.WriteLine($"[UnhandledException] Reset error: {ex.Message}"); } };
-            Application.ThreadException += (s, e) => { try { if (asusControl != null) asusControl.ResetToDefault(); } catch (Exception ex) { Debug.WriteLine($"[ThreadException] Reset error: {ex.Message}"); } };
+            AppDomain.CurrentDomain.UnhandledException += (s, e) => { try { if (_fanController != null) _fanController.ResetToDefault(); } catch (Exception ex) { Debug.WriteLine($"[UnhandledException] Reset error: {ex.Message}"); } };
+            Application.ThreadException += (s, e) => { try { if (_fanController != null) _fanController.ResetToDefault(); } catch (Exception ex) { Debug.WriteLine($"[ThreadException] Reset error: {ex.Message}"); } };
 
-            toolStripMenuItemTurnOffControlOnExit.Checked = Properties.Settings.Default.turnOffControlOnExit;
-            toolStripMenuItemForbidUnsafeSettings.Checked = Properties.Settings.Default.forbidUnsafeSettings;
-            toolStripMenuItemMinimizeToTrayOnClose.Checked = Properties.Settings.Default.minimizeToTrayOnClose;
-            toolStripMenuItemAutoRefreshStats.Checked = Properties.Settings.Default.autoRefreshStats;
-            trackBarFanSpeed.Value = Properties.Settings.Default.fanSpeed;
-
-            checkBoxAuto.Checked = Properties.Settings.Default.autoMode;
-            numericUpdateInterval.Value = Properties.Settings.Default.updateInterval;
-            currentFanCurve = FanCurve.FromString(Properties.Settings.Default.fanCurve);
-
+            currentFanCurve = FanCurve.FromJson(Properties.Settings.Default.fanCurve);
             if (currentFanCurve.PointCount == 0)
             {
                  currentFanCurve.SetPoints(new[]
@@ -90,7 +60,28 @@ namespace AsusFanControlGUI
                  });
             }
 
+            _autoFanController = new AutoFanController(_fanController, currentFanCurve);
+            _autoFanController.FanSpeedChanged += (s, speed) =>
+            {
+                try { if (!IsDisposed) this.BeginInvoke(new Action(() => labelValue.Text = speed.ToString() + " (Auto)")); } catch { }
+            };
+
+            toolStripMenuItemTurnOffControlOnExit.Checked = Properties.Settings.Default.turnOffControlOnExit;
+            toolStripMenuItemForbidUnsafeSettings.Checked = Properties.Settings.Default.forbidUnsafeSettings;
+            toolStripMenuItemMinimizeToTrayOnClose.Checked = Properties.Settings.Default.minimizeToTrayOnClose;
+            toolStripMenuItemAutoRefreshStats.Checked = Properties.Settings.Default.autoRefreshStats;
+            trackBarFanSpeed.Value = Properties.Settings.Default.fanSpeed;
+
+            checkBoxAuto.Checked = Properties.Settings.Default.autoMode;
+            numericUpdateInterval.Value = Properties.Settings.Default.updateInterval;
+
             updateUIState();
+
+            // Ensure auto-controller starts if already checked
+            if (checkBoxAuto.Checked)
+            {
+                _autoFanController.Start(Properties.Settings.Default.updateInterval);
+            }
 
             Console.Error.WriteLine("[startup] Form1 constructor completed");
             Debug.WriteLine("[startup] Form1 constructor completed");
@@ -114,9 +105,10 @@ namespace AsusFanControlGUI
                         {
                             _activeProfileName = profile.Name;
                             currentFanCurve = profile.Curve ?? currentFanCurve;
-                            Properties.Settings.Default.fanCurve = currentFanCurve.ToString();
+                            Properties.Settings.Default.fanCurve = currentFanCurve.ToJson();
                             Properties.Settings.Default.Save();
-                            try { if (asusControl != null) asusControl.SetFanSpeeds(fanSpeed); } catch { }
+                            _autoFanController?.UpdateFanCurve(currentFanCurve);
+                            try { if (_fanController != null) _fanController.SetFanSpeeds(fanSpeed); } catch { }
                         }
                     }
                     catch (OperationCanceledException) { break; }
@@ -151,15 +143,20 @@ namespace AsusFanControlGUI
                 {
                     components.Dispose();
                 }
+                
+                trayIcon?.Dispose();
 
                 // Custom cleanup
-                if (asusControl != null)
+                _autoFanController?.Dispose();
+                _csvLogger?.Dispose();
+
+                if (_fanController != null)
                 {
                     if (Properties.Settings.Default.turnOffControlOnExit)
                     {
                         try
                         {
-                            asusControl.ResetToDefault();
+                            _fanController.ResetToDefault();
                         }
                         catch (Exception ex)
                         {
@@ -169,14 +166,14 @@ namespace AsusFanControlGUI
 
                     try
                     {
-                        asusControl.Dispose();
+                        _fanController.Dispose();
                     }
                     catch (Exception ex)
                     {
                         Debug.WriteLine($"[Dispose] Dispose error: {ex.Message}");
                     }
 
-                    asusControl = null; // Prevent use-after-dispose
+                    _fanController = null; // Prevent use-after-dispose
                 }
             }
             base.Dispose(disposing);
@@ -203,11 +200,11 @@ namespace AsusFanControlGUI
 
         private void OnProcessExit(object sender, EventArgs e)
         {
-            if (Properties.Settings.Default.turnOffControlOnExit && asusControl != null)
+            if (Properties.Settings.Default.turnOffControlOnExit && _fanController != null)
             {
                 try
                 {
-                    asusControl.ResetToDefault();
+                    _fanController.ResetToDefault();
                 }
                 catch (Exception ex)
                 {
@@ -318,9 +315,9 @@ namespace AsusFanControlGUI
 
         private async void toolStripMenuItemStartWithWindows_CheckedChanged(object sender, EventArgs e)
         {
-            var want = toolStripMenuItemStartWithWindows.Checked;
             try
             {
+                var want = toolStripMenuItemStartWithWindows.Checked;
                 var ok = false;
                 await System.Threading.Tasks.Task.Run(() =>
                 {
@@ -343,7 +340,8 @@ namespace AsusFanControlGUI
             }
             catch (Exception ex)
             {
-                toolStripMenuItemStartWithWindows.Checked = !want;
+                // revert if possible
+                try { toolStripMenuItemStartWithWindows.Checked = !toolStripMenuItemStartWithWindows.Checked; } catch { }
                 MessageBox.Show("Failed to update Startup task: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -374,7 +372,7 @@ namespace AsusFanControlGUI
 
         private void setFanSpeed()
         {
-            if (checkBoxAuto.Checked || asusControl == null)
+            if (checkBoxAuto.Checked || _fanController == null)
                 return;
 
             var value = trackBarFanSpeed.Value;
@@ -394,7 +392,7 @@ namespace AsusFanControlGUI
 
             fanSpeed = value;
 
-            asusControl.SetFanSpeeds(value);
+            _fanController.SetFanSpeeds(value);
         }
 
         private void checkBoxTurnOn_CheckedChanged(object sender, EventArgs e)
@@ -425,14 +423,14 @@ namespace AsusFanControlGUI
 
         private void buttonRefreshRPM_Click(object sender, EventArgs e)
         {
-            if (asusControl != null)
-                labelRPM.Text = string.Join(" ", asusControl.GetFanSpeeds());
+            if (_fanController != null)
+                labelRPM.Text = string.Join(" ", _fanController.GetFanSpeeds());
         }
 
         private void buttonRefreshCPUTemp_Click(object sender, EventArgs e)
         {
-            if (asusControl != null)
-                labelCPUTemp.Text = $"{asusControl.Thermal_Read_Cpu_Temperature()}";
+            if (_fanController != null)
+                labelCPUTemp.Text = $"{_fanController.Thermal_Read_Cpu_Temperature()}";
         }
 
         private void checkBoxAuto_CheckedChanged(object sender, EventArgs e)
@@ -446,44 +444,12 @@ namespace AsusFanControlGUI
             {
                 if (checkBoxAuto.Checked)
                 {
-                    // start
-                    _autoCts = new System.Threading.CancellationTokenSource();
-                    var token = _autoCts.Token;
-                    _autoControlTask = System.Threading.Tasks.Task.Run(async () =>
-                    {
-                        while (!token.IsCancellationRequested)
-                        {
-                            try
-                            {
-                                await System.Threading.Tasks.Task.Delay(Properties.Settings.Default.updateInterval, token);
-                                if (asusControl == null) continue;
-                                var tempU = asusControl.Thermal_Read_Cpu_Temperature();
-                                int temp = (int)tempU;
-                                int targetSpeed = currentFanCurve.GetTargetSpeed(temp);
-
-                                // Hysteresis
-                                if (targetSpeed > fanSpeed || Math.Abs(targetSpeed - fanSpeed) > 2)
-                                {
-                                    fanSpeed = targetSpeed;
-                                    try { asusControl.SetFanSpeeds(targetSpeed); } catch { }
-                                }
-
-                                // update UI
-                                try { this.BeginInvoke(new Action(() => labelValue.Text = targetSpeed.ToString() + " (Auto)")); } catch { }
-                            }
-                            catch (OperationCanceledException) { break; }
-                            catch { }
-                        }
-                    }, token);
+                    _autoFanController?.UpdateFanCurve(currentFanCurve);
+                    _autoFanController?.Start(Properties.Settings.Default.updateInterval);
                 }
                 else
                 {
-                    // stop
-                    try { _autoCts?.Cancel(); } catch { }
-                    try { _autoControlTask?.Wait(500); } catch { }
-                    try { _autoCts?.Dispose(); } catch { }
-                    _autoCts = null;
-                    _autoControlTask = null;
+                    _autoFanController?.Stop();
                 }
             }
             catch { }
@@ -495,8 +461,9 @@ namespace AsusFanControlGUI
             if (editor.ShowDialog() == DialogResult.OK)
             {
                 currentFanCurve = editor.ResultCurve;
-                Properties.Settings.Default.fanCurve = currentFanCurve.ToString();
+                Properties.Settings.Default.fanCurve = currentFanCurve.ToJson();
                 Properties.Settings.Default.Save();
+                _autoFanController?.UpdateFanCurve(currentFanCurve);
             }
         }
 
@@ -509,7 +476,7 @@ namespace AsusFanControlGUI
 
         private void toolStripMenuItemStartLogging_Click(object sender, EventArgs e)
         {
-            if (loggingTimer != null && loggingTimer.Enabled)
+            if (_csvLogger != null)
             {
                 stopLogging();
             }
@@ -527,17 +494,19 @@ namespace AsusFanControlGUI
                 {
                     try
                     {
-                        loggingWriter = new StreamWriter(new FileStream(dlg.FilePath, FileMode.Append, FileAccess.Write, FileShare.Read, 4096, true));
-                        if (loggingWriter.BaseStream.Length == 0)
+                        if (_csvLogger == null)
                         {
-                            loggingWriter.WriteLine("Timestamp,CPU Temp (C),Fan Speed (RPM),CPU Load (%)");
+                            _csvLogger = new CsvLogger(
+                                () => _fanController != null ? _fanController.Thermal_Read_Cpu_Temperature() : 0,
+                                () => _fanController != null ? string.Join("|", _fanController.GetFanSpeeds()) : "0",
+                                async () => {
+                                    if (cpuCounter == null) return 0;
+                                    try { return await Task.Run(() => cpuCounter.NextValue()); } catch { return 0; }
+                                }
+                            );
                         }
 
-                        loggingTimer = new Timer();
-                        loggingTimer.Interval = dlg.Interval;
-                        loggingTimer.Tick += LoggingTimer_Tick;
-                        loggingTimer.Start();
-
+                        _csvLogger.Start(dlg.FilePath, dlg.Interval);
                         toolStripMenuItemStartLogging.Text = "Stop Logging";
                     }
                     catch (Exception ex)
@@ -551,57 +520,15 @@ namespace AsusFanControlGUI
 
         private void stopLogging()
         {
-            if (loggingTimer != null)
+            if (_csvLogger != null)
             {
-                loggingTimer.Stop();
-                loggingTimer.Dispose();
-                loggingTimer = null;
-            }
-
-            if (loggingWriter != null)
-            {
-                try
-                {
-                    loggingWriter.Close();
-                    loggingWriter.Dispose();
-                }
-                catch { }
-                loggingWriter = null;
+                _csvLogger.Stop();
+                _csvLogger.Dispose();
+                _csvLogger = null;
             }
 
             if (toolStripMenuItemStartLogging != null && !toolStripMenuItemStartLogging.IsDisposed)
                 toolStripMenuItemStartLogging.Text = "Start Logging";
-        }
-
-        private async void LoggingTimer_Tick(object sender, EventArgs e)
-        {
-            if (isLoggingWriting) return;
-            isLoggingWriting = true;
-            try
-            {
-                var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                var cpuTemp = asusControl.Thermal_Read_Cpu_Temperature();
-                var fanSpeeds = string.Join("|", asusControl.GetFanSpeeds());
-
-                float cpuLoad = 0;
-                if (cpuCounter != null)
-                {
-                    cpuLoad = await Task.Run(() => cpuCounter.NextValue());
-                }
-
-                if (loggingWriter != null)
-                {
-                     await loggingWriter.WriteLineAsync($"{timestamp},{cpuTemp},{fanSpeeds},{cpuLoad:F2}");
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[LoggingTimer] Error: {ex.Message}");
-            }
-            finally
-            {
-                isLoggingWriting = false;
-            }
         }
     }
 }

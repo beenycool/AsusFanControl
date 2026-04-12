@@ -70,12 +70,15 @@ namespace AsusFanControlGUI
                 Console.Error.WriteLine("[startup] Before Form1 construction");
                 Debug.WriteLine("[startup] Before Form1 construction");
 
-                var form = new Form1();
+                using (var asusControl = new AsusControl())
+                {
+                    var form = new Form1(asusControl);
 
-                Console.Error.WriteLine("[startup] Form1 constructed");
-                Debug.WriteLine("[startup] Form1 constructed");
+                    Console.Error.WriteLine("[startup] Form1 constructed");
+                    Debug.WriteLine("[startup] Form1 constructed");
 
-                Application.Run(form);
+                    Application.Run(form);
+                }
             }
             catch (Exception ex)
             {
