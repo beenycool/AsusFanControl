@@ -1,12 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json.Serialization;
+using System.Text.Json;
 
 namespace AsusFanControl.Core
 {
     public class FanCurvePoint
     {
+        [JsonPropertyName("t")]
         public int Temperature { get; set; }
+        [JsonPropertyName("s")]
         public int Speed { get; set; }
 
         public FanCurvePoint(int temperature, int speed)
@@ -18,21 +22,26 @@ namespace AsusFanControl.Core
         public FanCurvePoint() { }
     }
 
-    public class FanCurve
-    {
-        private readonly object _lock = new object();
-        private List<FanCurvePoint> _points = new List<FanCurvePoint>();
+public class FanCurve
+{
+    private readonly object _lock = new object();
+    private List<FanCurvePoint> _points = new List<FanCurvePoint>();
 
-        public IReadOnlyList<FanCurvePoint> Points
+    [JsonPropertyName("p")]
+    public List<FanCurvePoint> Points
+    {
+        get
         {
-            get
+            lock (_lock)
             {
-                lock (_lock)
-                {
-                    return _points.Select(ClonePoint).ToList();
-                }
+                return _points.Select(ClonePoint).ToList();
             }
         }
+        set
+        {
+            SetPoints(value);
+        }
+    }
 
         public int GetTargetSpeed(int currentTemp)
         {
@@ -85,15 +94,20 @@ namespace AsusFanControl.Core
             return sortedPoints[count - 1].Speed;
         }
 
-        public override string ToString()
-        {
-            List<FanCurvePoint> snapshot;
-            lock (_lock)
-            {
-                snapshot = _points.Select(ClonePoint).ToList();
-            }
+        public string ToJson() => JsonSerializer.Serialize(this);
 
-            return string.Join(",", snapshot.Select(p => $"{p.Temperature}:{p.Speed}"));
+        public static FanCurve FromJson(string json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+                return new FanCurve();
+            try
+            {
+                return JsonSerializer.Deserialize<FanCurve>(json) ?? new FanCurve();
+            }
+            catch
+            {
+                return new FanCurve();
+            }
         }
 
         public void SetPoints(IEnumerable<FanCurvePoint> newPoints)
@@ -161,26 +175,7 @@ namespace AsusFanControl.Core
             }
         }
 
-        public static FanCurve FromString(string data)
-        {
-            var curve = new FanCurve();
-            if (string.IsNullOrWhiteSpace(data))
-                return curve;
-
-            var points = new List<FanCurvePoint>();
-            var parts = data.Split(',');
-            foreach (var part in parts)
-            {
-                var kv = part.Split(':');
-                if (kv.Length == 2 && int.TryParse(kv[0], out int temperature) && int.TryParse(kv[1], out int speed))
-                {
-                    points.Add(new FanCurvePoint(temperature, speed));
-                }
-            }
-
-            curve.SetPoints(points);
-            return curve;
-        }
+public static FanCurve FromString(string data) => FromJson(data);
 
         private static FanCurvePoint ValidatePoint(FanCurvePoint point, string paramName)
         {

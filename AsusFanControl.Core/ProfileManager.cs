@@ -2,13 +2,20 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace AsusFanControl.Core
 {
     public class FanProfile
     {
+        [JsonPropertyName("n")]
         public string Name { get; set; }
+
+        [JsonPropertyName("c")]
         public FanCurve Curve { get; set; }
+
+        [JsonPropertyName("p")]
         public List<string> TriggerProcesses { get; set; } = new List<string>();
 
         public FanProfile() { }
@@ -20,26 +27,19 @@ namespace AsusFanControl.Core
             TriggerProcesses = triggerProcesses.ToList();
         }
 
-        public override string ToString()
-        {
-            var curveStr = Curve?.ToString() ?? "";
-            var procStr = string.Join(";", TriggerProcesses.Select(p => Uri.EscapeDataString(p)));
-            return $"{Uri.EscapeDataString(Name)}|{curveStr}|{procStr}";
-        }
+        public string ToJson() => JsonSerializer.Serialize(this);
 
-        public static FanProfile FromString(string data)
+        public static FanProfile FromJson(string json)
         {
-            if (string.IsNullOrWhiteSpace(data)) return null;
-            var parts = data.Split('|');
-            if (parts.Length < 3) return null;
-
-            return new FanProfile
+            if (string.IsNullOrWhiteSpace(json)) return null;
+            try
             {
-                Name = Uri.UnescapeDataString(parts[0]),
-                Curve = FanCurve.FromString(parts[1]),
-                TriggerProcesses = parts[2].Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(Uri.UnescapeDataString).ToList()
-            };
+                return JsonSerializer.Deserialize<FanProfile>(json);
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 
@@ -60,12 +60,15 @@ namespace AsusFanControl.Core
                 _activeProfileName = null;
                 if (string.IsNullOrWhiteSpace(serialized)) return;
 
-                var entries = serialized.Split(new[] { "||" }, StringSplitOptions.RemoveEmptyEntries);
-                foreach (var entry in entries)
+                try
                 {
-                    var profile = FanProfile.FromString(entry);
-                    if (profile != null)
-                        _profiles.Add(profile);
+                    var data = JsonSerializer.Deserialize<List<FanProfile>>(serialized);
+                    if (data != null)
+                        _profiles.AddRange(data);
+                }
+                catch (JsonException)
+                {
+                    Debug.WriteLine("Settings are not valid JSON.");
                 }
             }
         }
@@ -74,7 +77,7 @@ namespace AsusFanControl.Core
         {
             lock (_lock)
             {
-                return string.Join("||", _profiles.Select(p => p.ToString()));
+                return JsonSerializer.Serialize(_profiles);
             }
         }
 

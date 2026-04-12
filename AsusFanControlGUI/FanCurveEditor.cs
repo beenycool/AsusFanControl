@@ -75,7 +75,7 @@ namespace AsusFanControlGUI
                     try
                     {
                         var curve = fanCurveControl1.GetCurve();
-                        System.IO.File.WriteAllText(saveFileDialog.FileName, curve.ToString());
+                        System.IO.File.WriteAllText(saveFileDialog.FileName, curve.ToJson());
                     }
                     catch (Exception ex)
                     {
