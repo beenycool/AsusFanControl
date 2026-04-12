@@ -82,7 +82,7 @@ namespace AsusFanControlGUI
             //
             this.textBoxFilePath.Location = new System.Drawing.Point(85, 42);
             this.textBoxFilePath.Name = "textBoxFilePath";
-            this.textBoxFilePath.ReadOnly = true;
+            this.textBoxFilePath.ReadOnly = false;
             this.textBoxFilePath.Size = new System.Drawing.Size(200, 20);
             this.textBoxFilePath.TabIndex = 3;
             //

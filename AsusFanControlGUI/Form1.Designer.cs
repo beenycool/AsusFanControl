@@ -210,7 +210,9 @@ namespace AsusFanControlGUI
             this.toolStripMenuItemForbidUnsafeSettings,
             this.toolStripMenuItemMinimizeToTrayOnClose,
             this.toolStripMenuItemAutoRefreshStats,
-            this.toolStripMenuItemStartLogging});
+            this.toolStripMenuItemStartLogging,
+            this.toolStripMenuItemProfileManager,
+            this.toolStripMenuItemStartWithWindows});
             this.toolStripMenuItem1.Name = "toolStripMenuItem1";
             this.toolStripMenuItem1.Size = new System.Drawing.Size(72, 20);
             this.toolStripMenuItem1.Text = "Advanced";
@@ -253,6 +255,23 @@ namespace AsusFanControlGUI
             this.toolStripMenuItemStartLogging.Size = new System.Drawing.Size(207, 22);
             this.toolStripMenuItemStartLogging.Text = "Start Logging";
             this.toolStripMenuItemStartLogging.Click += new System.EventHandler(this.toolStripMenuItemStartLogging_Click);
+            //
+            // toolStripMenuItemProfileManager
+            //
+            this.toolStripMenuItemProfileManager = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripMenuItemProfileManager.Name = "toolStripMenuItemProfileManager";
+            this.toolStripMenuItemProfileManager.Size = new System.Drawing.Size(207, 22);
+            this.toolStripMenuItemProfileManager.Text = "Profile Manager";
+            this.toolStripMenuItemProfileManager.Click += new System.EventHandler(this.toolStripMenuItemProfileManager_Click);
+            //
+            // toolStripMenuItemStartWithWindows
+            //
+            this.toolStripMenuItemStartWithWindows = new System.Windows.Forms.ToolStripMenuItem();
+            this.toolStripMenuItemStartWithWindows.CheckOnClick = true;
+            this.toolStripMenuItemStartWithWindows.Name = "toolStripMenuItemStartWithWindows";
+            this.toolStripMenuItemStartWithWindows.Size = new System.Drawing.Size(207, 22);
+            this.toolStripMenuItemStartWithWindows.Text = "Start with Windows";
+            this.toolStripMenuItemStartWithWindows.CheckedChanged += new System.EventHandler(this.toolStripMenuItemStartWithWindows_CheckedChanged);
             //
             // toolStripMenuItemCheckForUpdates
             // 
@@ -316,10 +335,11 @@ namespace AsusFanControlGUI
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemMinimizeToTrayOnClose;
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemAutoRefreshStats;
         private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemStartLogging;
+        private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemProfileManager;
+        private System.Windows.Forms.ToolStripMenuItem toolStripMenuItemStartWithWindows;
         private System.Windows.Forms.CheckBox checkBoxAuto;
         private System.Windows.Forms.Button buttonEditCurve;
         private System.Windows.Forms.NumericUpDown numericUpdateInterval;
         private System.Windows.Forms.Label labelInterval;
     }
 }
-

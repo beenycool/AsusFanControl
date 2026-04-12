@@ -18,32 +18,19 @@ namespace AsusFanControlGUI
         Timer loggingTimer;
         StreamWriter loggingWriter;
         bool isLoggingWriting = false;
+        System.Threading.CancellationTokenSource _backgroundCts;
+        ProfileManager _profileManager;
+        string _activeProfileName;
+        System.Threading.Tasks.Task _profileMonitorTask;
+        System.Threading.CancellationTokenSource _autoCts;
+        System.Threading.Tasks.Task _autoControlTask;
 
         public Form1()
         {
-            try
-            {
-                #region agent log
-                Console.Error.WriteLine("[startup] Form1 constructor entered");
-                Debug.WriteLine("[startup] Form1 constructor entered");
-                File.AppendAllText("/home/ubuntu/projects/AsusFanControl/.cursor/debug-4df631.log",
-                    "{\"sessionId\":\"4df631\",\"runId\":\"pre-fix\",\"hypothesisId\":\"H3\",\"location\":\"Form1.cs:24\",\"message\":\"Form1 constructor entered\",\"data\":{},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n");
-                #endregion
-            }
-            catch
-            {
-            }
+            // constructor entered
 
-            try
-            {
-                #region agent log
-                Console.Error.WriteLine("[startup] Before AsusControl construction");
-                Debug.WriteLine("[startup] Before AsusControl construction");
-                #endregion
-            }
-            catch
-            {
-            }
+            Console.Error.WriteLine("[startup] Before AsusControl construction");
+            Debug.WriteLine("[startup] Before AsusControl construction");
 
             try
             {
@@ -51,40 +38,33 @@ namespace AsusFanControlGUI
             }
             catch (Exception ex)
             {
-                try
-                {
-                    #region agent log
-                    Console.Error.WriteLine("[startup] AsusControl construction failed: " + ex);
-                    Debug.WriteLine("[startup] AsusControl construction failed: " + ex);
-                    #endregion
-                }
-                catch
-                {
-                }
+                Console.Error.WriteLine("[startup] AsusControl construction failed: " + ex);
+                Debug.WriteLine("[startup] AsusControl construction failed: " + ex);
 
                 throw;
             }
 
-            try
-            {
-                #region agent log
-                Console.Error.WriteLine("[startup] AsusControl constructed");
-                Debug.WriteLine("[startup] AsusControl constructed");
-                #endregion
-            }
-            catch
-            {
-            }
+            Console.Error.WriteLine("[startup] AsusControl constructed");
+            Debug.WriteLine("[startup] AsusControl constructed");
 
             InitializeComponent();
-            try
+            // Apply dark menu renderer
+            try { menuStrip1.Renderer = new DarkMenuRenderer(); } catch { }
+
+            // Delay creating PerformanceCounter to avoid blocking UI
+            System.Threading.Tasks.Task.Run(() =>
             {
-                cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[Form1] Failed to create PerformanceCounter: {ex.Message}");
-            }
+                try
+                {
+                    var pc = new PerformanceCounter("Processor", "% Processor Time", "_Total");
+                    pc.NextValue(); // prime
+                    cpuCounter = pc;
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[Form1] Failed to create PerformanceCounter async: {ex.Message}");
+                }
+            });
             AppDomain.CurrentDomain.ProcessExit += new EventHandler(OnProcessExit);
             // Watchdog for crash
             AppDomain.CurrentDomain.UnhandledException += (s, e) => { try { if (asusControl != null) asusControl.ResetToDefault(); } catch (Exception ex) { Debug.WriteLine($"[UnhandledException] Reset error: {ex.Message}"); } };
@@ -112,18 +92,51 @@ namespace AsusFanControlGUI
 
             updateUIState();
 
-            try
+            Console.Error.WriteLine("[startup] Form1 constructor completed");
+            Debug.WriteLine("[startup] Form1 constructor completed");
+
+            // Initialize profile manager and background tasks
+            _profileManager = new ProfileManager();
+            try { _profileManager.LoadProfiles(Properties.Settings.Default.profiles); } catch { }
+            _backgroundCts = new System.Threading.CancellationTokenSource();
+
+            // Start profile monitor
+            _profileMonitorTask = System.Threading.Tasks.Task.Run(async () =>
             {
-                #region agent log
-                Console.Error.WriteLine("[startup] Form1 constructor completed");
-                Debug.WriteLine("[startup] Form1 constructor completed");
-                File.AppendAllText("/home/ubuntu/projects/AsusFanControl/.cursor/debug-4df631.log",
-                    "{\"sessionId\":\"4df631\",\"runId\":\"pre-fix\",\"hypothesisId\":\"H3\",\"location\":\"Form1.cs:70\",\"message\":\"Form1 constructor completed\",\"data\":{\"autoMode\":" + (checkBoxAuto.Checked ? "true" : "false") + ",\"updateInterval\":" + numericUpdateInterval.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) + "},\"timestamp\":" + DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + "}\n");
-                #endregion
-            }
-            catch
+                var token = _backgroundCts.Token;
+                while (!token.IsCancellationRequested)
+                {
+                    try
+                    {
+                        await System.Threading.Tasks.Task.Delay(2000, token);
+                        var profile = _profileManager.CheckActiveProfile(currentFanCurve);
+                        if (profile != null && profile.Name != _activeProfileName)
+                        {
+                            _activeProfileName = profile.Name;
+                            currentFanCurve = profile.Curve ?? currentFanCurve;
+                            Properties.Settings.Default.fanCurve = currentFanCurve.ToString();
+                            Properties.Settings.Default.Save();
+                            try { if (asusControl != null) asusControl.SetFanSpeeds(fanSpeed); } catch { }
+                        }
+                    }
+                    catch (OperationCanceledException) { break; }
+                    catch { }
+                }
+            }, _backgroundCts.Token);
+
+            // Check task scheduler registration for menu state
+            System.Threading.Tasks.Task.Run(() =>
             {
-            }
+                try
+                {
+                    var registered = TaskSchedulerHelper.IsTaskRegistered();
+                    if (toolStripMenuItemStartWithWindows != null && !toolStripMenuItemStartWithWindows.IsDisposed)
+                    {
+                        try { toolStripMenuItemStartWithWindows.Checked = registered; } catch { }
+                    }
+                }
+                catch { }
+            });
         }
 
         /// <summary>
@@ -274,22 +287,7 @@ namespace AsusFanControlGUI
         {
             buttonRefreshRPM_Click(sender, e);
             buttonRefreshCPUTemp_Click(sender, e);
-
-            if (checkBoxAuto.Checked && asusControl != null)
-            {
-                ulong tempU = asusControl.Thermal_Read_Cpu_Temperature();
-                int temp = (int)tempU;
-                int targetSpeed = currentFanCurve.GetTargetSpeed(temp);
-
-                labelValue.Text = targetSpeed.ToString() + " (Auto)";
-
-                // Hysteresis to prevent rapid oscillation
-                if (targetSpeed > fanSpeed || Math.Abs(targetSpeed - fanSpeed) > 2)
-                {
-                    fanSpeed = targetSpeed;
-                    asusControl.SetFanSpeeds(targetSpeed);
-                }
-            }
+            // Auto-control runs in background task; UI timer only updates stats when configured
         }
 
         private void toolStripMenuItemTurnOffControlOnExit_CheckedChanged(object sender, EventArgs e)
@@ -316,6 +314,57 @@ namespace AsusFanControlGUI
             Properties.Settings.Default.Save();
 
             timerRefreshStats();
+        }
+
+        private async void toolStripMenuItemStartWithWindows_CheckedChanged(object sender, EventArgs e)
+        {
+            var want = toolStripMenuItemStartWithWindows.Checked;
+            try
+            {
+                var ok = false;
+                await System.Threading.Tasks.Task.Run(() =>
+                {
+                    try
+                    {
+                        if (want)
+                            ok = TaskSchedulerHelper.RegisterTask(Application.ExecutablePath);
+                        else
+                            ok = TaskSchedulerHelper.UnregisterTask();
+                    }
+                    catch { ok = false; }
+                });
+
+                if (!ok)
+                {
+                    // revert
+                    toolStripMenuItemStartWithWindows.Checked = !want;
+                    MessageBox.Show("Failed to update Startup task. You may need elevated privileges.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                toolStripMenuItemStartWithWindows.Checked = !want;
+                MessageBox.Show("Failed to update Startup task: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void toolStripMenuItemProfileManager_Click(object sender, EventArgs e)
+        {
+            using (var dlg = new ProfileEditorDialog(_profileManager, currentFanCurve))
+            {
+                if (dlg.ShowDialog(this) == DialogResult.OK)
+                {
+                    try
+                    {
+                        Properties.Settings.Default.profiles = _profileManager.SaveProfiles();
+                        Properties.Settings.Default.Save();
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine("[ProfileManager] Failed to save profiles: " + ex);
+                    }
+                }
+            }
         }
 
         private void toolStripMenuItemCheckForUpdates_Click(object sender, EventArgs e)
@@ -391,6 +440,53 @@ namespace AsusFanControlGUI
             Properties.Settings.Default.autoMode = checkBoxAuto.Checked;
             Properties.Settings.Default.Save();
             updateUIState();
+
+            // Start or stop background auto-control
+            try
+            {
+                if (checkBoxAuto.Checked)
+                {
+                    // start
+                    _autoCts = new System.Threading.CancellationTokenSource();
+                    var token = _autoCts.Token;
+                    _autoControlTask = System.Threading.Tasks.Task.Run(async () =>
+                    {
+                        while (!token.IsCancellationRequested)
+                        {
+                            try
+                            {
+                                await System.Threading.Tasks.Task.Delay(Properties.Settings.Default.updateInterval, token);
+                                if (asusControl == null) continue;
+                                var tempU = asusControl.Thermal_Read_Cpu_Temperature();
+                                int temp = (int)tempU;
+                                int targetSpeed = currentFanCurve.GetTargetSpeed(temp);
+
+                                // Hysteresis
+                                if (targetSpeed > fanSpeed || Math.Abs(targetSpeed - fanSpeed) > 2)
+                                {
+                                    fanSpeed = targetSpeed;
+                                    try { asusControl.SetFanSpeeds(targetSpeed); } catch { }
+                                }
+
+                                // update UI
+                                try { this.BeginInvoke(new Action(() => labelValue.Text = targetSpeed.ToString() + " (Auto)")); } catch { }
+                            }
+                            catch (OperationCanceledException) { break; }
+                            catch { }
+                        }
+                    }, token);
+                }
+                else
+                {
+                    // stop
+                    try { _autoCts?.Cancel(); } catch { }
+                    try { _autoControlTask?.Wait(500); } catch { }
+                    try { _autoCts?.Dispose(); } catch { }
+                    _autoCts = null;
+                    _autoControlTask = null;
+                }
+            }
+            catch { }
         }
 
         private void buttonEditCurve_Click(object sender, EventArgs e)
