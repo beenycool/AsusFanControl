@@ -56,38 +56,26 @@ jobs:
     - name: Build the application
       run: msbuild $env:Solution_Name /p:Configuration=${{ matrix.configuration }} /p:Platform=${{ matrix.platform }}
 
-    # Download PsExec, create launcher batch, and stage only release files (no PDB/obj noise)
+    # Stage only release files (no PDB/obj noise)
     - name: Prepare Artifacts
       run: |
         $out = "bin/${{ matrix.platform }}/${{ matrix.configuration }}"
-        Invoke-WebRequest -Uri "https://download.sysinternals.com/files/PSTools.zip" -OutFile "PSTools.zip"
-        Expand-Archive -Path "PSTools.zip" -DestinationPath "PSTools"
-        Copy-Item -Path "PSTools/PsExec.exe" -Destination $out
-
-        $batContent = @"
-        net session >nul 2>&1
-        if %ERRORLEVEL% NEQ 0 (
-            echo Requesting administrative privileges...
-            powershell -Command "Start-Process -FilePath 'cmd.exe' -ArgumentList '/c \"\"%~f0\"\"' -Verb RunAs"
-            exit /b
-        )
-
-        "%~dp0PsExec" -i -s -d "%~dp0AsusFanControl.exe"
-        "@
-        $batContent | Out-File -FilePath "$out/RunAsAdmin.bat" -Encoding ASCII
 
         $stage = "artifacts/AsusFanControl"
         New-Item -ItemType Directory -Force -Path $stage | Out-Null
-        
-        # Debug: list all files in output directory
-        Write-Host "Files in output directory:"
-        Get-ChildItem $out -Recurse | ForEach-Object { Write-Host $_.FullName }
-        
+
+if ($env:CI_DEBUG -eq "true") {
+     Write-Host "Files in output directory:"
+     Get-ChildItem $out -Recurse | ForEach-Object { Write-Host $_.FullName }
+ }
+
         Copy-Item "$out/AsusFanControl.exe" $stage
-        Copy-Item "$out/AsusFanControl.exe.config" $stage
+        if (Test-Path "$out/AsusFanControl.exe.config") {
+     Copy-Item "$out/AsusFanControl.exe.config" $stage
+ } else {
+     Write-Warning "AsusFanControl.exe.config not found in $out"
+ }
         Copy-Item "$out/AsusWinIO64.dll" $stage
-        Copy-Item "$out/PsExec.exe" $stage
-        Copy-Item "$out/RunAsAdmin.bat" $stage
 
     # Upload the build artifact
     - name: Upload build artifacts
