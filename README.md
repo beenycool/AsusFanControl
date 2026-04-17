@@ -19,7 +19,7 @@ The same `AsusFanControl.exe` starts the **GUI** when you double‑click it or r
         --get-cpu-temp
 </details>
 
-GUI: run `AsusFanControl.exe` with no arguments (or use `RunAsAdmin.bat` where provided).  
+GUI: run `AsusFanControl.exe` with no arguments (it will automatically request admin rights).  
 
 ![AsusFanControlGUI](https://github.com/Karmel0x/AsusFanControl/assets/25367564/fe197ad0-7079-4d51-ae78-177cb6369e96)
 
@@ -35,3 +35,9 @@ The release build embeds the same `AsusWinIO64.dll` (licenced to `(c) ASUSTek CO
 
 [Works on](../../issues/13): 
 - ASUS: VivoBook, ZenBook, TUF Gaming, ROG Strix, ROG Zephyrus, ROG Flow
+
+### Security & Antivirus
+
+Because this application interacts with hardware-level drivers via AsusWinIO64.dll, antivirus software such as Windows Defender might falsely flag it as malicious.
+If you experience this issue, please add the executable to your antivirus exclusions.
+*(Alternatively, you can compile and code-sign the executable yourself to prevent false positives.)*
