@@ -12,11 +12,11 @@ namespace AsusFanControlGUI
     {
         private List<FanCurvePoint> _points = new List<FanCurvePoint>();
         private int _draggingIndex = -1;
-        private const int PointRadius = 6;
-        private const int MarginLeft = 40;
-        private const int MarginBottom = 30;
-        private const int MarginRight = 20;
-        private const int MarginTop = 20;
+        private int PointRadius => LogicalToDeviceUnits(6);
+        private int MarginLeft => LogicalToDeviceUnits(40);
+        private int MarginBottom => LogicalToDeviceUnits(30);
+        private int MarginRight => LogicalToDeviceUnits(20);
+        private int MarginTop => LogicalToDeviceUnits(20);
 
         public FanCurveControl()
         {
