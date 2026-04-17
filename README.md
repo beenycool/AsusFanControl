@@ -37,6 +37,7 @@ The release build embeds the same `AsusWinIO64.dll` (licenced to `(c) ASUSTek CO
 - ASUS: VivoBook, ZenBook, TUF Gaming, ROG Strix, ROG Zephyrus, ROG Flow
 
 ### Security & Antivirus
-Because this application interacts with hardware-level drivers (`AsusWinIO64.dll`), anti-viruses such as Windows Defender might falsely flag it as malicious.
-If you experience this issue, please add the executable to your Windows Defender exclusions.
+
+Because this application interacts with hardware-level drivers via AsusWinIO64.dll, antivirus software such as Windows Defender might falsely flag it as malicious.
+If you experience this issue, please add the executable to your antivirus exclusions.
 *(Alternatively, you can compile and code-sign the executable yourself to prevent false positives.)*
