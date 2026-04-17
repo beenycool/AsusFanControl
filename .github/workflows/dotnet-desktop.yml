@@ -64,12 +64,17 @@ jobs:
         $stage = "artifacts/AsusFanControl"
         New-Item -ItemType Directory -Force -Path $stage | Out-Null
 
-        # Debug: list all files in output directory
-        Write-Host "Files in output directory:"
-        Get-ChildItem $out -Recurse | ForEach-Object { Write-Host $_.FullName }
+if ($env:CI_DEBUG -eq "true") {
+     Write-Host "Files in output directory:"
+     Get-ChildItem $out -Recurse | ForEach-Object { Write-Host $_.FullName }
+ }
 
         Copy-Item "$out/AsusFanControl.exe" $stage
-        Copy-Item "$out/AsusFanControl.exe.config" $stage -ErrorAction SilentlyContinue
+        if (Test-Path "$out/AsusFanControl.exe.config") {
+     Copy-Item "$out/AsusFanControl.exe.config" $stage
+ } else {
+     Write-Warning "AsusFanControl.exe.config not found in $out"
+ }
         Copy-Item "$out/AsusWinIO64.dll" $stage
 
     # Upload the build artifact
