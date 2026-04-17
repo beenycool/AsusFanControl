@@ -11,8 +11,11 @@
     <Setting Name="forbidUnsafeSettings" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">True</Value>
     </Setting>
-    <Setting Name="minimizeToTrayOnClose" Type="System.Boolean" Scope="User">
-      <Value Profile="(Default)">False</Value>
+<Setting Name="minimizeToTrayOnClose" Type="System.Boolean" Scope="User">
+        <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="profiles" Type="System.String" Scope="User">
+        <Value Profile="(Default)"></Value>
     </Setting>
     <Setting Name="autoRefreshStats" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
