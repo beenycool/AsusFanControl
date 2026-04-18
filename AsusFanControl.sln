@@ -5,7 +5,7 @@ VisualStudioVersion = 17.6.33801.468
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AsusFanControl.Core", "AsusFanControl.Core\AsusFanControl.Core.csproj", "{5DE454F6-67E4-42EB-A427-04022A4E0CA2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AsusFanControlGUI", "AsusFanControlGUI\AsusFanControlGUI.csproj", "{42CC78B6-E3BB-4092-A423-A4EC20FB3C11}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AsusFanControlGUI", "AsusFanControlGUI\AsusFanControlGUI.csproj", "{42CC78B6-E3BB-4092-A423-A4EC20FB3C11}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
